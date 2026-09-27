@@ -353,6 +353,52 @@ export interface BatchRateQueueOptions<T> {
    * When enabled, circuit breaker state is coordinated via Postgres across all replicas.
    */
   circuitBreaker?: CircuitBreakerConfig;
+
+  /**
+   * Extract an idempotency key from each item.
+   * When provided, duplicate task redelivery (e.g. after container crashes) will return
+   * the cached result rather than firing duplicate external side-effects (e.g. double charging Stripe).
+   *
+   * @example
+   * ```ts
+   * idempotencyKey: (item) => `charge_${item.orderId}`
+   * ```
+   */
+  idempotencyKey?: (item: T) => string;
+
+  /**
+   * Custom idempotency store for caching side-effect results.
+   * Defaults to in-memory store with 24-hour TTL.
+   */
+  idempotencyStore?: any;
+
+  /**
+   * Time-to-live in milliseconds for idempotency records.
+   * @default 86400000 (24 hours)
+   */
+  idempotencyTtlMs?: number;
+
+  /**
+   * Automatic payload claim-check size threshold in bytes.
+   * Items larger than this threshold have their payload offloaded to `payloadStore`
+   * to prevent database table bloat and preserve high-throughput SKIP LOCKED scans.
+   * @default 65536 (64 KB)
+   */
+  claimCheckThresholdBytes?: number;
+
+  /**
+   * Custom payload store for claim-check offloading.
+   * Defaults to in-memory store.
+   */
+  payloadStore?: any;
+
+  /**
+   * Isolate partial batch failures in the write buffer.
+   * When true, if a 50-row batch fails due to a constraint violation on 1 row,
+   * the remaining 49 valid rows are saved and only the invalid row is dropped.
+   * @default true
+   */
+  isolateBatchFailures?: boolean;
 }
 
 /**

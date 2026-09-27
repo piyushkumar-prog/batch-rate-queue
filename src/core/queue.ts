@@ -18,6 +18,9 @@ import { WriteBuffer } from './buffer';
 import { setupGracefulShutdown } from './shutdown';
 import { PgTokenBucket } from '../distributed/pg-token-bucket';
 import { PgCircuitBreaker, CircuitState } from '../distributed/pg-circuit-breaker';
+import { IdempotencyManager } from './idempotency';
+import { ClaimCheckManager, isClaimCheckRef } from './claim-check';
+import { parseRateLimitHeaders } from './header-parser';
 
 /**
  * BatchRateQueue
@@ -26,24 +29,12 @@ import { PgCircuitBreaker, CircuitState } from '../distributed/pg-circuit-breake
  *   - A token-bucket rate limiter (Throttler, AdaptiveThrottler, KeyedThrottler, or PgTokenBucket)
  *   - An optional fair-share scheduler (FairScheduler)
  *   - An optional distributed circuit breaker (PgCircuitBreaker)
- *   - An in-memory write buffer (WriteBuffer)
+ *   - Built-in idempotency deduplication (IdempotencyManager)
+ *   - Automatic claim-check payload offloading (ClaimCheckManager)
+ *   - Multi-provider rate-limit header parser (parseRateLimitHeaders)
+ *   - An in-memory write buffer with partial batch failure isolation (WriteBuffer)
  *   - A self-scheduling drain loop
  *   - Graceful shutdown handling
- *
- * v1.1.0 additions:
- *   - Adaptive throttling (reads live 429s, error rates, Retry-After headers)
- *   - Cost-weighted rate limiting (for LLM token-based budgets)
- *   - Runtime-adjustable rate limits (setRateLimit / setBatchFlush)
- *   - Pluggable error classifiers (httpRateLimitClassifier, llmApiClassifier, etc.)
- *
- * v1.2.0 additions:
- *   - Per-key/per-tenant rate limiting (rateLimitKey + perKeyRateLimit)
- *   - Weighted fair-share scheduling (fairShare: true) via Deficit Round Robin
- *
- * v1.3.0 additions:
- *   - Distributed rate limiting via PostgreSQL shared token bucket (PgTokenBucket)
- *   - Distributed circuit breaker via PostgreSQL (PgCircuitBreaker)
- *   - Lightweight budget statistics for dashboard/monitoring (getBudgetStats)
  */
 export class BatchRateQueue<T> extends EventEmitter {
   readonly name: string;
@@ -58,6 +49,8 @@ export class BatchRateQueue<T> extends EventEmitter {
   private readonly scheduler: FairScheduler<T> | null;
   private readonly pgTokenBucket: PgTokenBucket | null;
   private readonly circuitBreaker: PgCircuitBreaker | null;
+  private readonly idempotencyManager: IdempotencyManager | null;
+  private readonly claimCheckManager: ClaimCheckManager;
   private readonly buffer: WriteBuffer;
   private readonly isAdaptive: boolean;
   private readonly isCostBased: boolean;
@@ -65,7 +58,7 @@ export class BatchRateQueue<T> extends EventEmitter {
   private readonly isFairShare: boolean;
   private readonly isDistributed: boolean;
 
-  private pendingItems: T[] = [];
+  private pendingItems: any[] = [];
   private processedCount = 0;
   private failedCount = 0;
   private running = false;
@@ -128,6 +121,22 @@ export class BatchRateQueue<T> extends EventEmitter {
       this.circuitBreaker = null;
     }
 
+    // Initialize idempotency manager if configured
+    if (this.options.idempotencyKey) {
+      this.idempotencyManager = new IdempotencyManager({
+        store: this.options.idempotencyStore,
+        defaultTtlMs: this.options.idempotencyTtlMs,
+      });
+    } else {
+      this.idempotencyManager = null;
+    }
+
+    // Initialize claim-check manager for large payloads
+    this.claimCheckManager = new ClaimCheckManager({
+      store: this.options.payloadStore,
+      thresholdBytes: this.options.claimCheckThresholdBytes,
+    });
+
     // Initialize local rate limiter (adaptive or standard)
     if (this.isAdaptive && this.options.adaptiveThrottle) {
       const adaptiveConfig = {
@@ -159,7 +168,7 @@ export class BatchRateQueue<T> extends EventEmitter {
       this.scheduler = null;
     }
 
-    // Initialize write buffer
+    // Initialize write buffer with partial batch failure isolation
     this.buffer = new WriteBuffer({
       config: this.options.batchFlush,
       maxRetries: this.options.maxRetries,
@@ -172,6 +181,7 @@ export class BatchRateQueue<T> extends EventEmitter {
         this.emit('flush', count);
       },
       errorClassifier: this.options.errorClassifier,
+      isolateBatchFailures: this.options.isolateBatchFailures ?? true,
     });
 
     // Prevent unhandled 'error' event crashes from EventEmitter.
@@ -289,13 +299,13 @@ export class BatchRateQueue<T> extends EventEmitter {
 
     const requestsPerSec = effectiveRate.requests / (effectiveRate.perMs / 1000);
     const pending = this.getPendingCount();
-    const estimatedSecondsRemaining = requestsPerSec > 0 && pending > 0
-      ? Math.ceil(pending / requestsPerSec)
-      : 0;
+    const estimatedSecondsRemaining =
+      requestsPerSec > 0 && pending > 0 ? Math.ceil(pending / requestsPerSec) : 0;
 
-    const estimatedCompletionTime = pending > 0 && estimatedSecondsRemaining > 0
-      ? new Date(Date.now() + estimatedSecondsRemaining * 1000).toISOString()
-      : null;
+    const estimatedCompletionTime =
+      pending > 0 && estimatedSecondsRemaining > 0
+        ? new Date(Date.now() + estimatedSecondsRemaining * 1000).toISOString()
+        : null;
 
     let keysStats: Record<string, any> | null = null;
     if (this.keyedThrottler) {
@@ -317,7 +327,7 @@ export class BatchRateQueue<T> extends EventEmitter {
     return {
       queue: {
         name: this.name,
-        state: this.paused ? 'paused' : (this.running ? 'running' : 'idle'),
+        state: this.paused ? 'paused' : this.running ? 'running' : 'idle',
         pending,
         processed: this.processedCount,
         failed: this.failedCount,
@@ -415,6 +425,8 @@ export class BatchRateQueue<T> extends EventEmitter {
     this.scheduler?.clear();
     this.pgTokenBucket?.destroy().catch(() => {});
     this.circuitBreaker?.destroy().catch(() => {});
+    this.idempotencyManager?.destroy();
+    this.claimCheckManager.destroy().catch(() => {});
     this.buffer.destroy();
 
     if (this.shutdownCleanup) {
@@ -509,6 +521,31 @@ export class BatchRateQueue<T> extends EventEmitter {
 
         const promises = batch.map(async ({ key, item }) => {
           try {
+            // Hydrate claim-check payload if offloaded
+            const actualItem: T = await this.claimCheckManager.hydrateIfNeeded(item);
+
+            // Check idempotency if configured
+            let idempKey: string | null = null;
+            if (this.idempotencyManager && this.options.idempotencyKey) {
+              idempKey = this.options.idempotencyKey(actualItem);
+              const cachedResult = await this.idempotencyManager.check(idempKey);
+
+              if (cachedResult) {
+                // Return cached result without firing side-effect
+                if (cachedResult.id) {
+                  const bufferItem: BufferItem = {
+                    id: cachedResult.id,
+                    updates: cachedResult.updates,
+                    retries: 0,
+                  };
+                  this.buffer.add(bufferItem);
+                }
+                this.processedCount++;
+                this.emit('processed', cachedResult);
+                return;
+              }
+            }
+
             // Check circuit breaker if configured
             if (this.circuitBreaker) {
               const allowed = await this.circuitBreaker.allowRequest();
@@ -541,7 +578,7 @@ export class BatchRateQueue<T> extends EventEmitter {
             // Determine cost for this item
             const cost =
               this.isCostBased && this.options.costExtractor
-                ? this.options.costExtractor(item)
+                ? this.options.costExtractor(actualItem)
                 : 1;
 
             // Acquire rate-limit tokens (may block)
@@ -558,7 +595,12 @@ export class BatchRateQueue<T> extends EventEmitter {
             }
 
             // Call the user's worker function
-            const result = await this.options.worker(item);
+            const result = await this.options.worker(actualItem);
+
+            // Record in idempotency manager upon success
+            if (result && idempKey && this.idempotencyManager) {
+              await this.idempotencyManager.record(idempKey, result);
+            }
 
             // Record success for circuit breaker
             if (this.circuitBreaker) {
@@ -580,12 +622,20 @@ export class BatchRateQueue<T> extends EventEmitter {
               }
             }
 
-            // Record success for adaptive throttling
+            // Record success for adaptive throttling & parse rate limit headers
             if (this.isAdaptive) {
+              let retryAfterSeconds = result?.meta?.retryAfterSeconds;
+              if (result?.meta?.headers && !retryAfterSeconds) {
+                const parsed = parseRateLimitHeaders(result.meta.headers);
+                if (parsed.retryAfterMs) {
+                  retryAfterSeconds = Math.ceil(parsed.retryAfterMs / 1000);
+                }
+              }
+
               const outcome: WorkerOutcome = {
                 success: true,
                 statusCode: result?.meta?.statusCode,
-                retryAfterSeconds: result?.meta?.retryAfterSeconds,
+                retryAfterSeconds,
               };
               (this.throttler as AdaptiveThrottler).recordOutcome(outcome);
             }
@@ -629,23 +679,20 @@ export class BatchRateQueue<T> extends EventEmitter {
 
             // Record failure for adaptive throttling
             if (this.isAdaptive) {
+              const headers = error?.headers ?? error?.response?.headers;
+              const parsed = parseRateLimitHeaders(headers);
+
+              let retryAfterSeconds: number | undefined;
+              if (parsed.retryAfterMs) {
+                retryAfterSeconds = Math.ceil(parsed.retryAfterMs / 1000);
+              }
+
               const outcome: WorkerOutcome = {
                 success: false,
                 statusCode: error?.status ?? error?.statusCode ?? error?.response?.status,
-                retryAfterSeconds: undefined,
+                retryAfterSeconds,
                 error: err,
               };
-
-              // Extract Retry-After from error if available
-              const retryAfter =
-                error?.headers?.['retry-after'] ??
-                error?.response?.headers?.['retry-after'];
-              if (retryAfter) {
-                const seconds = parseInt(retryAfter, 10);
-                if (!isNaN(seconds) && seconds > 0) {
-                  outcome.retryAfterSeconds = seconds;
-                }
-              }
 
               (this.throttler as AdaptiveThrottler).recordOutcome(outcome);
             }

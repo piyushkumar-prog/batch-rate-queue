@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-09-27
+
+### Added
+
+- **Idempotency & Side-Effect Deduplication** (`IdempotencyManager` / `MemoryIdempotencyStore`):
+  - Solves the core failure mode where worker crashes before recording completion, preventing duplicate external API calls (e.g. double charging Stripe, sending duplicate SMS/emails)
+  - `idempotencyKey` option on queue with configurable TTL and pluggable storage
+- **Partial Batch Failure Isolation** (`WriteBuffer`):
+  - When 1 row in a 50-item SQL batch violates a database constraint, automatically isolates the failing row and commits the other 49 valid rows
+  - Eliminates all-or-nothing batch rollbacks and prevents cascading data loss
+- **PgBouncer Transaction-Pooling Distributed Lock** (`PgLeaseLock`):
+  - Replaces session-scoped `pg_advisory_lock` with transaction-mode safe lease tables and fencing tokens
+  - 100% compatible with Supabase, Neon, AWS RDS Proxy, and Prisma Accelerate
+  - Immune to clock drift, server restarts, and DST transitions
+- **Unified Multi-Provider Rate Limit Header Parser** (`parseRateLimitHeaders`):
+  - Supports IETF RFC 9745 (`RateLimit: limit=..., remaining=..., reset=...`), OpenAI (`20ms`, `6m0s`), Anthropic, GitHub, Vercel, and HTTP-Date `Retry-After`
+- **Claim-Check Pattern for Large Job Payloads** (`ClaimCheckManager` / `MemoryPayloadStore`):
+  - Automatically offloads heavy payloads (>64KB) to prevent table bloat and preserve fast SKIP LOCKED index scans
+  - Transparently dehydrates and re-hydrates payloads before passing to worker functions
+- 20 new tests (161 total passing across 17 test suites)
+
 ## [1.3.0] - 2026-09-27
 
 ### Added

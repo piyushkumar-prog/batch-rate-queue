@@ -9,11 +9,25 @@ export { FairScheduler } from './core/fair-scheduler';
 export { WriteBuffer, isDbConnectionError } from './core/buffer';
 export { setupGracefulShutdown, removeShutdownHandlers } from './core/shutdown';
 
+// Idempotency & Side-Effect Deduplication
+export { IdempotencyManager, MemoryIdempotencyStore } from './core/idempotency';
+export type { IdempotencyStore, IdempotencyRecord } from './core/idempotency';
+
+// Claim-Check Pattern (Large Payload Offloading)
+export { ClaimCheckManager, MemoryPayloadStore, isClaimCheckRef, estimateByteSize } from './core/claim-check';
+export type { PayloadStore, ClaimCheckRef } from './core/claim-check';
+
+// Rate Limit Header Parser
+export { parseRateLimitHeaders, parseRetryAfter } from './core/header-parser';
+export type { ParsedRateLimitInfo } from './core/header-parser';
+
 // Distributed
 export { PgTokenBucket } from './distributed/pg-token-bucket';
 export type { PgTokenBucketOptions, PgTokenBucketState } from './distributed/pg-token-bucket';
 export { PgCircuitBreaker } from './distributed/pg-circuit-breaker';
 export type { PgCircuitBreakerOptions, PgCircuitBreakerState, CircuitState } from './distributed/pg-circuit-breaker';
+export { PgLeaseLock } from './distributed/pg-lease-lock';
+export type { PgLeaseLockOptions, PgLockState } from './distributed/pg-lease-lock';
 
 // Error Classifiers
 export {

@@ -42,6 +42,8 @@ export class WriteBuffer {
   private readonly onFlushComplete: (count: number) => void;
   private readonly errorClassifier: ErrorClassifier;
 
+  private readonly isolateBatchFailures: boolean;
+
   /** Total items successfully flushed (for stats/dashboard). */
   totalFlushed: number = 0;
   /** Total flush operations that failed. */
@@ -54,6 +56,7 @@ export class WriteBuffer {
     onError: (error: Error, context: string) => void;
     onFlushComplete?: (count: number) => void;
     errorClassifier?: ErrorClassifier;
+    isolateBatchFailures?: boolean;
   }) {
     this.config = options.config;
     this.maxRetries = options.maxRetries;
@@ -61,6 +64,7 @@ export class WriteBuffer {
     this.onError = options.onError;
     this.onFlushComplete = options.onFlushComplete ?? (() => {});
     this.errorClassifier = options.errorClassifier ?? dbConnectionClassifier;
+    this.isolateBatchFailures = options.isolateBatchFailures ?? true;
 
     this.startFlushInterval();
   }
@@ -103,6 +107,8 @@ export class WriteBuffer {
   /**
    * Flush up to `config.size` items from the buffer to the database.
    * Uses the error classifier to determine retry/fail behavior.
+   * On non-transient constraint errors, isolates failures item-by-item so
+   * valid rows still commit and only the failing row is dropped.
    */
   async flush(): Promise<void> {
     if (this.buffer.length === 0 || this.flushing) return;
@@ -161,8 +167,24 @@ export class WriteBuffer {
           }
 
           await this.sleep(backoffMs);
+        } else if (this.isolateBatchFailures && batch.length > 1) {
+          // Partial batch failure isolation:
+          // Try writing items individually so that valid rows commit and only the
+          // failing row(s) are isolated and reported.
+          for (const item of batch) {
+            try {
+              await this.onFlush([item]);
+              this.totalFlushed += 1;
+              this.onFlushComplete(1);
+            } catch (itemErr: any) {
+              this.onError(
+                itemErr instanceof Error ? itemErr : new Error(String(itemErr)),
+                `buffer.flush.item(${item.id})`
+              );
+            }
+          }
         } else {
-          // Non-transient or unrecognized error — report and drop the batch
+          // Non-transient single item or isolation disabled — report and drop
           this.onError(error instanceof Error ? error : new Error(String(error)), 'buffer.flush');
         }
       }
@@ -173,11 +195,15 @@ export class WriteBuffer {
 
   /**
    * Flush ALL remaining items in the buffer (may require multiple passes).
-   * Used during graceful shutdown.
+   * Used during graceful shutdown and explicit drain.
    */
   async flushAll(): Promise<void> {
-    while (this.buffer.length > 0) {
-      await this.flush();
+    while (this.buffer.length > 0 || this.flushing) {
+      if (this.flushing) {
+        await this.sleep(10);
+      } else if (this.buffer.length > 0) {
+        await this.flush();
+      }
     }
   }
 

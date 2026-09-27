@@ -2,19 +2,22 @@
 
 > **Zero-Redis Resilient Background Worker, Throttling & Write-Buffering Layer**
 
-BatchRateQueue is an embedded Node.js throttling and write-buffering layer for background processing. It gives you precise token-bucket rate limiting, automatic reactive/adaptive throttling, per-tenant fair-share scheduling, distributed rate limiting with PostgreSQL, and high-throughput transactional database batching — **without requiring Redis or external worker infrastructure**.
+BatchRateQueue is an embedded Node.js throttling and write-buffering layer for background processing. It gives you precise token-bucket rate limiting, automatic reactive/adaptive throttling, per-tenant fair-share scheduling, distributed rate limiting with PostgreSQL, side-effect idempotency deduplication, partial batch failure isolation, and high-throughput transactional database batching — **without requiring Redis or external worker infrastructure**.
 
 ---
 
 ## Why BatchRateQueue?
 
-Most queues (BullMQ, Celery, pg-boss) are designed to distribute heavy tasks across worker nodes, but they introduce major operational pain when dealing with rate-limited APIs and database writes:
+Most queues (BullMQ, Celery, pg-boss, graphile-worker) are designed to distribute heavy tasks across worker nodes, but they introduce major operational pain when dealing with rate-limited APIs and database writes:
 
 1. **The Redis Tax:** You are forced to deploy, monitor, and pay for Redis clusters just to throttle a few API calls.
 2. **Database Hammering:** Naive workers execute an individual `UPDATE` for every processed item, causing lock contention, connection timeouts, and pool exhaustion.
-3. **Static Rate Limits:** Downstream services slow down or return `429 Too Many Requests`, but traditional queues continue hammering at full speed.
-4. **Tenant Starvation:** One heavy customer enqueueing 50,000 items starves smaller customers.
-5. **Single-Dimension Limiting:** Modern APIs (e.g. OpenAI, Anthropic) limit by **token count and cost**, not just request count.
+3. **Double-Firing External Side-Effects:** If a worker crashes after calling an external API (Stripe, Twilio, SendGrid) but before marking the job done, redelivery duplicates the charge or SMS.
+4. **All-or-Nothing Batch Failures:** If 1 row out of 50 in a SQL batch violates a constraint, Postgres rolls back the *entire* transaction, losing 49 good writes.
+5. **Static Rate Limits:** Downstream services slow down or return `429 Too Many Requests`, but traditional queues continue hammering at full speed.
+6. **Tenant Starvation:** One heavy customer enqueueing 50,000 items starves smaller customers.
+7. **Single-Dimension Limiting:** Modern APIs (e.g. OpenAI, Anthropic) limit by **token count and cost**, not just request count.
+8. **PgBouncer Incompatibility:** Session-scoped locks (`pg_advisory_lock`) break silently under PgBouncer transaction-pooling mode (Supabase, Neon, AWS RDS Proxy).
 
 **BatchRateQueue solves all of this in a single, lightweight package with 0 runtime dependencies.**
 
@@ -24,12 +27,17 @@ Most queues (BullMQ, Celery, pg-boss) are designed to distribute heavy tasks acr
 
 - ⚡ **True Token Bucket Limiting:** Smooth token accumulation with jitter to prevent window-boundary burst spikes.
 - 📉 **Batch SQL Write-Buffering:** Accumulates updates in memory and flushes them in atomic batch transactions (e.g., 50 updates per SQL query).
+- 🛡️ **Partial Batch Failure Isolation:** If row 30 of 50 violates a DB constraint, BatchRateQueue automatically salvages and commits the 49 valid rows while isolating the bad row.
+- 🔒 **Idempotency & Deduplication:** Built-in idempotency key manager prevents duplicate external API calls on crash recovery.
 - 🧠 **Reactive / Adaptive Throttling:** Automatically detects 429s, Retry-After headers, and rising error rates to throttle down throughput dynamically and recover smoothly.
+- 🌐 **Multi-Provider Header Parser:** Parses rate-limit headers across RFC 9745, OpenAI, Anthropic, GitHub, Vercel, and HTTP-Date `Retry-After`.
 - 🪙 **Cost-Weighted Rate Limiting:** Enforce token-based budgets (e.g., 40,000 LLM tokens/min) where each job consumes variable units.
 - 🏢 **Multi-Tenant / Per-Key Rate Limiting:** Independent rate buckets per tenant, API key, or destination within a single queue (the feature BullMQ removed and made paid-only).
 - ⚖️ **Deficit Round Robin (DRR) Fair-Share Scheduling:** Prevents tenant starvation by round-robining fairly across tenants.
-- 🐘 **Zero-Redis Distributed Rate Limiting:** Optional PostgreSQL-backed shared token bucket (`PgTokenBucket`) to coordinate rate limits across multiple Kubernetes pods or Node.js processes.
-- 🛡️ **Distributed Circuit Breaker:** PostgreSQL-backed shared circuit breaker (`PgCircuitBreaker`) that trips across all pods when downstream APIs fail.
+- 📦 **Claim-Check Pattern for Large Payloads:** Offloads payloads >64KB to prevent DB table bloat and preserve high-throughput SKIP LOCKED scans.
+- 🐘 **Zero-Redis Distributed Rate Limiting:** Optional PostgreSQL-backed shared token bucket (`PgTokenBucket`) to coordinate rate limits across multiple Kubernetes pods.
+- 🚦 **PostgreSQL Distributed Circuit Breaker:** PostgreSQL-backed shared circuit breaker (`PgCircuitBreaker`) that trips across all pods when downstream APIs fail.
+- 🔑 **PgBouncer-Safe Lease Locking:** Distributed lease-based lock (`PgLeaseLock`) designed specifically for PgBouncer transaction pooling mode.
 - 🔄 **Runtime-Adjustable Limits:** Update rate limits (`setRateLimit`) and batch sizes (`setBatchFlush`) on live workers without restarts.
 - 🔍 **Pluggable Error Classifiers:** Built-in error classifiers for HTTP 429/503, OpenAI/Anthropic rate limits, and Prisma/TCP connection errors.
 - 📊 **Lightweight Budget Dashboard Data:** Export real-time token utilization %, buffer metrics, per-key stats, and backlog completion ETAs (`getBudgetStats()`).
@@ -83,105 +91,89 @@ console.log(queue.getStats());
 
 ---
 
-## Advanced Use Cases
+## Advanced Production Recipes
 
-### 1. LLM Token-Budget Limiting (Cost-Weighted)
+### 1. Idempotency for External Side-Effects (Stripe / Twilio)
 
-When calling LLMs (OpenAI, Anthropic), rates are limited by **tokens per minute (TPM)** rather than simple request count:
+Prevent duplicate charges or emails when workers crash before recording completion:
 
 ```typescript
-import { createBatchRateQueue } from 'batch-rate-queue';
+const queue = createBatchRateQueue({
+  name: 'billing-charges',
+  rateLimit: { requests: 20, perMs: 1000 },
+  batchFlush: { size: 50, intervalMs: 2000 },
+  // Deduplicate by charge idempotency key
+  idempotencyKey: (item) => `charge_${item.orderId}`,
+  idempotencyTtlMs: 24 * 60 * 60 * 1000, // 24-hour cache
+  worker: async (item) => {
+    const charge = await stripe.charges.create({
+      amount: item.amount,
+      currency: 'usd',
+    });
+    return { id: item.id, updates: { chargeId: charge.id, status: 'paid' } };
+  },
+  onBatchFlush: async (batch) => db.saveCharges(batch),
+});
+```
+
+---
+
+### 2. LLM Token-Budget Limiting (OpenAI / Anthropic TPM)
+
+Enforce tokens-per-minute (TPM) budgets where each task consumes variable prompt/completion tokens:
+
+```typescript
+import { createBatchRateQueue, llmApiClassifier } from 'batch-rate-queue';
 
 const queue = createBatchRateQueue({
   name: 'openai-embeddings',
   // Budget: 40,000 tokens per minute
   rateLimit: { requests: 40000, perMs: 60000, costBased: true },
   batchFlush: { size: 50, intervalMs: 3000 },
-  // Pre-acquire estimated token budget before execution
+  // Estimate tokens before acquiring
   costExtractor: (item) => Math.ceil(item.text.length / 4),
+  errorClassifier: llmApiClassifier,
   worker: async (item) => {
     const response = await openai.embeddings.create({
       model: 'text-embedding-3-small',
       input: item.text,
     });
-
     return {
       id: item.id,
       updates: { embedding: response.data[0].embedding },
-      meta: { actualCost: response.usage.total_tokens }, // Report actual usage
+      meta: { actualCost: response.usage.total_tokens }, // Exact actual tokens used
     };
   },
-  onBatchFlush: async (batch) => {
-    await db.saveEmbeddings(batch);
-  },
+  onBatchFlush: async (batch) => db.saveEmbeddings(batch),
 });
 ```
 
 ---
 
-### 2. Multi-Tenant Rate Limiting & Fair-Share Scheduling
+### 3. Multi-Tenant Rate Limiting & Fair-Share Scheduling
 
-Give each tenant their own rate limit and prevent large tenants from blocking smaller ones:
+Isolate rate limits per customer and eliminate tenant starvation via Deficit Round Robin (DRR):
 
 ```typescript
 const queue = createBatchRateQueue({
   name: 'multi-tenant-sync',
   rateLimit: { requests: 10, perMs: 1000 }, // Default: 10 req/s
   batchFlush: { size: 100, intervalMs: 2000 },
-  // Extract tenant ID to isolate rate buckets
   rateLimitKey: (item) => item.tenantId,
-  // Custom SLA limits per tenant
   perKeyRateLimit: {
-    'tenant-enterprise': { requests: 100, perMs: 1000 },
-    'tenant-free': { requests: 2, perMs: 1000 },
+    'enterprise-corp': { requests: 100, perMs: 1000 },
+    'free-tier-user':  { requests: 2, perMs: 1000 },
   },
-  // Deficit Round Robin scheduling: prevents 10k items from tenant A starving tenant B
+  // DRR Scheduling: 10k items from tenant A will never block tenant B
   fairShare: true,
-  worker: async (item) => {
-    return await syncTenantData(item);
-  },
-  onBatchFlush: async (batch) => {
-    await db.bulkUpdate(batch);
-  },
-});
-
-// Update a tenant's rate dynamically at runtime
-queue.setKeyRateLimit('tenant-free', { requests: 10, perMs: 1000 });
-```
-
----
-
-### 3. Reactive / Adaptive Throttling
-
-Automatically back off when downstream APIs return `429`, `503`, or `Retry-After` headers, and gradually recover when error rates normalize:
-
-```typescript
-import { createBatchRateQueue, httpRateLimitClassifier } from 'batch-rate-queue';
-
-const queue = createBatchRateQueue({
-  name: 'resilient-enrichment',
-  rateLimit: { requests: 20, perMs: 1000 },
-  batchFlush: { size: 50, intervalMs: 2000 },
-  adaptiveThrottle: {
-    enabled: true,
-    signalSource: 'both',
-    errorRateThreshold: 0.2, // If >20% recent requests fail, back off
-    backoffFactor: 0.5,      // Halve the throughput
-    recoveryFactor: 1.1,     // Smooth 10% recovery steps
-    honorRetryAfter: true,   // Respect Retry-After header duration
-    onRateChange: (e) => {
-      console.log(`Rate adjusted: ${e.previousRate} -> ${e.newRate} (${e.reason})`);
-    },
-  },
-  errorClassifier: httpRateLimitClassifier,
-  worker: async (item) => callExternalApi(item),
-  onBatchFlush: async (batch) => db.flush(batch),
+  worker: async (item) => syncTenantData(item),
+  onBatchFlush: async (batch) => db.bulkUpdate(batch),
 });
 ```
 
 ---
 
-### 4. Distributed Rate Limiting Across Pods (Zero-Redis)
+### 4. Zero-Redis Distributed Rate Limiting Across Pods
 
 Coordinate rate limits across all application replicas using a shared PostgreSQL token bucket:
 
@@ -206,33 +198,29 @@ const queue = createBatchRateQueue({
 
 ---
 
-### 5. Distributed Circuit Breaker
+### 5. PgBouncer-Safe Distributed Lease Lock
 
-Trip a shared circuit breaker in PostgreSQL so all replicas immediately stop hammering a failing service:
+Execute distributed scheduled jobs safely under PgBouncer transaction-pooling mode (Supabase, Neon, AWS RDS Proxy):
 
 ```typescript
-const queue = createBatchRateQueue({
-  name: 'crm-sync',
-  rateLimit: { requests: 10, perMs: 1000 },
-  batchFlush: { size: 50, intervalMs: 2000 },
-  circuitBreaker: {
-    pool,
-    breakerKey: 'salesforce-api',
-    failureThreshold: 5,   // Trip after 5 consecutive failures
-    cooldownMs: 30000,     // 30s cooldown before trying HALF-OPEN
-  },
-  worker: async (item) => syncToSalesforce(item),
-  onBatchFlush: async (batch) => db.save(batch),
+import { PgLeaseLock } from 'batch-rate-queue';
+
+const lock = new PgLeaseLock({
+  pool,
+  lockKey: 'cron:daily-reconciliation',
+  ttlMs: 30000, // 30-second lease
 });
 
-queue.on('circuitBreakerTripped', (e) => {
-  console.warn(`[ALERT] Circuit breaker ${e.breakerKey} tripped to OPEN!`);
+// Automatically acquires, heartbeats, executes, and releases
+await lock.runWithLock(async () => {
+  console.log('Running daily reconciliation with guaranteed single-replica execution!');
+  await reconcileAccounts();
 });
 ```
 
 ---
 
-### 6. Dashboard & Monitoring Stats
+### 6. Real-Time Dashboard & Monitoring Data
 
 Expose rich throughput, budget utilization, and backlog ETAs for health checks or Prometheus/Grafana:
 
@@ -264,33 +252,19 @@ app.get('/metrics/queue', (req, res) => {
 | `batchFlush` | `BatchFlushConfig` | *required* | Write buffer config (`size`, `intervalMs`) |
 | `worker` | `(item: T) => Promise<WorkerResult \| null>` | *required* | Worker function per item |
 | `onBatchFlush` | `(batch: BufferItem[]) => Promise<void>` | *required* | Transactional bulk write handler |
-| `concurrency` | `number` | `1` | Worker concurrency within rate limit |
-| `maxRetries` | `number` | `3` | Max transient DB retries |
-| `costExtractor` | `(item: T) => number` | `() => 1` | Pre-acquire token cost extractor |
+| `idempotencyKey` | `(item: T) => string` | `undefined` | Deduplication key extractor preventing duplicate external calls |
+| `idempotencyTtlMs` | `number` | `86400000` | Idempotency record TTL (24h default) |
+| `isolateBatchFailures` | `boolean` | `true` | Salvage 49 valid rows when 1 row fails in a 50-item SQL batch |
+| `claimCheckThresholdBytes` | `number` | `65536` | Offload payloads >64KB to preserve fast DB index scans |
 | `rateLimitKey` | `(item: T) => string` | `undefined` | Key extractor for per-tenant rate isolation |
-| `perKeyRateLimit` | `Record<string, RateLimitConfig>` | `undefined` | Per-key rate limit overrides |
+| `perKeyRateLimit` | `Record<string, RateLimitConfig>` | `undefined` | Custom SLA rate limits per tenant/key |
 | `fairShare` | `boolean` | `false` | Enable Deficit Round Robin scheduling |
-| `adaptiveThrottle` | `AdaptiveThrottleConfig` | `undefined` | Auto-backoff and recovery config |
+| `costExtractor` | `(item: T) => number` | `() => 1` | Pre-acquire token cost extractor (LLM tokens/TPM) |
+| `adaptiveThrottle` | `AdaptiveThrottleConfig` | `undefined` | Auto-backoff on 429 / Retry-After and smooth recovery |
 | `errorClassifier` | `ErrorClassifier` | `dbConnectionClassifier` | Custom error classifier function |
 | `distributed` | `DistributedConfig` | `undefined` | PostgreSQL shared token bucket config |
 | `circuitBreaker` | `CircuitBreakerConfig` | `undefined` | PostgreSQL shared circuit breaker config |
 | `gracefulShutdown` | `boolean` | `true` | Auto-commit buffers on `SIGINT`/`SIGTERM` |
-
----
-
-### Queue Methods
-
-- `queue.add(item)`: Enqueue a single item.
-- `queue.addMany(items)`: Enqueue an array of items.
-- `queue.setRateLimit(config)`: Change rate limit dynamically without restarting workers.
-- `queue.setKeyRateLimit(key, config)`: Set/update a specific tenant's rate limit.
-- `queue.removeKeyRateLimit(key)`: Remove a tenant's rate bucket.
-- `queue.setBatchFlush(config)`: Change batch size or interval live.
-- `queue.getStats()`: Returns basic queue stats (`processed`, `failed`, `buffered`, `pending`, `running`).
-- `queue.getBudgetStats()`: Returns detailed budget, ETA, per-key, and circuit breaker metrics.
-- `queue.pause()` / `queue.resume()`: Temporarily halt or resume processing.
-- `queue.waitUntilDrained()`: Promise that resolves when all items are processed and buffers flushed.
-- `queue.destroy()`: Gracefully tears down timers, listeners, and handlers.
 
 ---
 

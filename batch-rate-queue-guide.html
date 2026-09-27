@@ -423,21 +423,21 @@
     <div class="page-content">
       <div class="doc-header">
         <span>batch-rate-queue // Technical Whitepaper & User Manual</span>
-        <span class="badge">v1.3.0 Enterprise Architecture</span>
+        <span class="badge">v1.4.0 Enterprise Architecture</span>
       </div>
 
       <div class="hero-banner">
         <div class="hero-pretitle">Open Source Node.js Architecture</div>
         <div class="hero-title">batch-rate-queue</div>
         <div class="hero-subtitle">
-          The Zero-Redis Throttling & SQL Write-Buffering Layer. Built-in adaptive throttling, multi-tenant fair scheduling, cost-weighted token budgeting, and PostgreSQL distributed coordination.
+          The Zero-Redis Throttling & SQL Write-Buffering Layer. Built-in idempotency deduplication, partial batch failure isolation, PgBouncer-safe lease locks, multi-tenant fair scheduling, and PostgreSQL distributed coordination.
         </div>
         <div class="hero-meta-row">
           <div class="hero-meta-item">Package: <strong>batch-rate-queue</strong></div>
-          <div class="hero-meta-item">Version: <strong>v1.3.0</strong></div>
+          <div class="hero-meta-item">Version: <strong>v1.4.0</strong></div>
           <div class="hero-meta-item">Runtime: <strong>Node.js >= 16</strong></div>
           <div class="hero-meta-item">License: <strong>MIT</strong></div>
-          <div class="hero-meta-item">Tests: <strong>141 / 141 Passing</strong></div>
+          <div class="hero-meta-item">Tests: <strong>161 / 161 Passing</strong></div>
         </div>
       </div>
 
@@ -445,35 +445,35 @@
         <span class="section-num">1</span> Real Production Gaps in Existing Queue Systems
       </h2>
       <p class="section-desc">
-        Traditional background job queues (BullMQ, pg-boss, Celery) were built to distribute compute across worker pools. When modern applications interact with rate-limited APIs and relational databases, developers hit severe architectural walls:
+        Traditional background job queues (BullMQ, pg-boss, Celery) were built to distribute compute across worker nodes. When modern applications interact with rate-limited APIs and relational databases, developers hit severe architectural walls:
       </p>
 
       <div class="grid-2">
         <div class="problem-card">
-          <h3>1. Static Rates & Downstream Struggles</h3>
+          <h3>1. Double-Firing External Side-Effects</h3>
           <p>
-            When downstream APIs encounter latency spikes, 429s, or 503s, queues like pg-boss and BullMQ continue hammering at static configured rates, piling up callbacks and crashing services.
+            When a worker crashes after calling an external API (Stripe, Twilio) but before marking the job done, redelivery calls the API a second time, duplicating charges or SMS.
           </p>
         </div>
 
         <div class="problem-card">
-          <h3>2. Single-Dimension Limiting (LLM Token Gap)</h3>
+          <h3>2. All-or-Nothing Batch Rollbacks</h3>
           <p>
-            Modern AI APIs (OpenAI, Anthropic) limit by <strong>tokens per minute (TPM)</strong>, not requests. General queues treat 1 job = 1 unit, unable to budget variable prompt/completion weights.
+            When 1 row in a 50-row batch violates a constraint, Postgres rolls back the entire transaction by default, losing the 49 good writes along with the bad one.
           </p>
         </div>
 
         <div class="problem-card">
-          <h3>3. Multi-Tenant Starvation & Paid Paywalls</h3>
+          <h3>3. PgBouncer Transaction Mode Breakage</h3>
           <p>
-            One tenant enqueueing 50k jobs blocks everyone else. BullMQ removed group rate limiting in v3 and made it paid-only. No free, robust multi-tenant scheduler existed.
+            Managed databases (Supabase, Neon, RDS Proxy) run PgBouncer in transaction-pooling mode, which silently breaks session-scoped <code>pg_advisory_lock</code>.
           </p>
         </div>
 
         <div class="problem-card">
-          <h3>4. The Redis Tax & Database Contention</h3>
+          <h3>4. Multi-Tenant Starvation & Paid Paywalls</h3>
           <p>
-            Forcing Redis infrastructure ($20–$100+/mo) for rate limiting, while naive workers fire 10,000 individual SQL UPDATEs, exhausting DB connection pools and CPU locks.
+            One heavy tenant enqueueing 50k jobs blocks everyone else. BullMQ removed group rate limiting in v3 and made it paid-only. No free, robust multi-tenant scheduler existed.
           </p>
         </div>
       </div>
@@ -526,7 +526,7 @@
         <span class="section-num">3</span> Complete Architecture Blueprint
       </h2>
       <p class="section-desc">
-        Incoming tasks flow through a multi-stage pipeline guaranteeing fair scheduling, token budgeting, adaptive backoff, and transactional batch writing:
+        Incoming tasks flow through a multi-stage pipeline guaranteeing fair scheduling, token budgeting, idempotency deduplication, adaptive backoff, and transactional batch writing:
       </p>
 
       <div class="arch-diagram">
@@ -537,13 +537,13 @@
           </div>
           <div class="arch-arrow">&rarr;</div>
           <div class="arch-node highlight">
-            <div class="arch-node-title">2. Rate Bucket</div>
-            <div class="arch-node-sub">Adaptive / Keyed / Pg<br>Cost-Weighted Tokens</div>
+            <div class="arch-node-title">2. Idempotency Check</div>
+            <div class="arch-node-sub">Deduplicates Side Effects<br>Bypasses Redelivery Calls</div>
           </div>
           <div class="arch-arrow">&rarr;</div>
           <div class="arch-node highlight-green">
-            <div class="arch-node-title">3. Circuit Breaker</div>
-            <div class="arch-node-sub">Pg Shared State<br>CLOSED / OPEN / HALF</div>
+            <div class="arch-node-title">3. Circuit & Tokens</div>
+            <div class="arch-node-sub">Pg Shared Lease/Breaker<br>Cost-Weighted Tokens</div>
           </div>
           <div class="arch-arrow">&rarr;</div>
           <div class="arch-node">
@@ -553,7 +553,7 @@
           <div class="arch-arrow">&rarr;</div>
           <div class="arch-node highlight">
             <div class="arch-node-title">5. Write Buffer</div>
-            <div class="arch-node-sub">Dual-Trigger Flush<br>Atomic Batch SQL</div>
+            <div class="arch-node-sub">Partial Batch Isolation<br>Atomic Batch SQL</div>
           </div>
         </div>
       </div>
@@ -564,28 +564,28 @@
 
       <div class="pill-grid">
         <div class="pill-card">
-          <strong>1. Reactive / Adaptive Throttling</strong>
-          <span>Sliding-window monitor reads live 429s, Retry-After headers, and rising error rates. Multiplies rate by backoffFactor and recovers smoothly.</span>
+          <strong>1. Idempotency & Deduplication</strong>
+          <span>Prevents duplicate external API calls (e.g. double-charging Stripe) on worker redeliveries after unhandled container crashes.</span>
         </div>
         <div class="pill-card">
-          <strong>2. Cost-Weighted LLM Token Budgets</strong>
-          <span>Enforces token-budget caps (e.g. 40k TPM). Each task consumes its estimated/actual token weight rather than a flat 1 request.</span>
+          <strong>2. Partial Batch Failure Isolation</strong>
+          <span>When 1 row in a 50-row batch fails a constraint, automatically isolates the bad row and commits the other 49 valid rows.</span>
         </div>
         <div class="pill-card">
-          <strong>3. Multi-Tenant Fair-Share (DRR)</strong>
+          <strong>3. PgBouncer-Safe Lease Locks</strong>
+          <span>Distributed lock table using UTC timestamp intervals, 100% safe under Supabase/Neon transaction pooling mode.</span>
+        </div>
+        <div class="pill-card">
+          <strong>4. Multi-Tenant Fair-Share (DRR)</strong>
           <span>Deficit Round Robin scheduling isolates tenant queues. A tenant with 50,000 items will never starve a tenant with 5 items.</span>
         </div>
         <div class="pill-card">
-          <strong>4. Zero-Redis Distributed Limiting</strong>
-          <span>Optional <code>PgTokenBucket</code> uses PostgreSQL row locks and time-delta refills to coordinate global rate limits across Kubernetes pods.</span>
+          <strong>5. Multi-Provider Header Parsing</strong>
+          <span>Parses IETF RFC 9745, OpenAI, Anthropic, GitHub, Vercel, and HTTP-Date <code>Retry-After</code> headers automatically.</span>
         </div>
         <div class="pill-card">
-          <strong>5. PostgreSQL Distributed Circuit Breaker</strong>
-          <span>Coordinates breaker state across all pods. When an API goes down, all replicas trip immediately without hammering the destination.</span>
-        </div>
-        <div class="pill-card">
-          <strong>6. Pluggable Classifiers & Live Controls</strong>
-          <span>Built-in error classifiers for HTTP 429/503 and OpenAI/Anthropic errors. Live runtime reconfiguration via <code>setRateLimit()</code>.</span>
+          <strong>6. Payload Claim-Check Pattern</strong>
+          <span>Automatically offloads payloads &gt;64KB to prevent DB table bloat and preserve high-throughput SKIP LOCKED scans.</span>
         </div>
       </div>
 
@@ -611,22 +611,22 @@
               <td class="good">Zero (Standalone or Postgres)</td>
             </tr>
             <tr>
-              <td><strong>Write-Buffering (Batch SQL)</strong></td>
-              <td class="bad">None (Row-by-row updates)</td>
-              <td class="bad">None (Row-by-row updates)</td>
-              <td class="good">Native In-Memory Dual-Trigger Buffer</td>
+              <td><strong>Partial Batch Failure Isolation</strong></td>
+              <td class="bad">No (All or nothing)</td>
+              <td class="bad">No (All or nothing)</td>
+              <td class="good">Native Row-Level Salvage Isolation</td>
             </tr>
             <tr>
-              <td><strong>Reactive / Adaptive Throttling</strong></td>
-              <td class="bad">Static Fixed Limiter</td>
-              <td class="bad">Static Rate Limiter</td>
-              <td class="good">Live 429 & Retry-After Auto Backoff</td>
+              <td><strong>Side-Effect Idempotency</strong></td>
+              <td class="bad">Manual only</td>
+              <td class="bad">Manual only</td>
+              <td class="good">Built-in IdempotencyManager</td>
             </tr>
             <tr>
-              <td><strong>Cost-Weighted Token Budgets</strong></td>
-              <td class="bad">No (1 job = 1 token)</td>
-              <td class="bad">No (1 job = 1 token)</td>
-              <td class="good">Yes (Per-job variable token weight)</td>
+              <td><strong>PgBouncer Transaction Mode</strong></td>
+              <td class="bad">N/A (Redis)</td>
+              <td class="bad">Advisory locks break in tx mode</td>
+              <td class="good">100% Safe (PgLeaseLock Table Rows)</td>
             </tr>
             <tr>
               <td><strong>Per-Key Multi-Tenant Isolation</strong></td>
@@ -647,10 +647,10 @@
               <td class="good">Postgres Shared Circuit Breaker</td>
             </tr>
             <tr>
-              <td><strong>Runtime Limit Reconfiguration</strong></td>
-              <td class="bad">Requires worker restart</td>
-              <td class="bad">Requires worker restart</td>
-              <td class="good">Live <code>setRateLimit()</code> without restart</td>
+              <td><strong>Claim-Check Large Payloads</strong></td>
+              <td class="bad">Manual</td>
+              <td class="bad">Manual</td>
+              <td class="good">Automatic Offload & Hydration</td>
             </tr>
           </tbody>
         </table>
@@ -672,45 +672,37 @@
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">6</span> Code Recipe: Multi-Tenant Fair Scheduling
+        <span class="section-num">6</span> Code Recipe: Side-Effect Idempotency Deduplication
       </h2>
       <p class="section-desc">
-        Isolate rate limits per tenant and prevent tenant starvation using Deficit Round Robin fair scheduling:
+        Prevent duplicate external charges or notifications when workers crash before marking a job complete:
       </p>
 
       <div class="code-container">
         <div class="code-header">
-          <span>multi-tenant-worker.ts</span>
+          <span>idempotent-stripe-worker.ts</span>
           <span>TypeScript</span>
         </div>
         <pre><span class="keyword">import</span> { <span class="fn">createBatchRateQueue</span> } <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
 
 <span class="keyword">const</span> queue = <span class="fn">createBatchRateQueue</span>({
-  <span class="prop">name</span>: <span class="str">'tenant-sync-service'</span>,
-  <span class="prop">rateLimit</span>: { <span class="prop">requests</span>: <span class="num">10</span>, <span class="prop">perMs</span>: <span class="num">1000</span> }, <span class="comment">// Default SLA: 10 req/sec</span>
-  <span class="prop">batchFlush</span>: { <span class="prop">size</span>: <span class="num">100</span>, <span class="prop">intervalMs</span>: <span class="num">2000</span> },
+  <span class="prop">name</span>: <span class="str">'billing-charges'</span>,
+  <span class="prop">rateLimit</span>: { <span class="prop">requests</span>: <span class="num">20</span>, <span class="prop">perMs</span>: <span class="num">1000</span> },
+  <span class="prop">batchFlush</span>: { <span class="prop">size</span>: <span class="num">50</span>, <span class="prop">intervalMs</span>: <span class="num">2000</span> },
 
-  <span class="comment">// 1. Isolate rate buckets by tenant ID</span>
-  <span class="prop">rateLimitKey</span>: (item) => item.tenantId,
-
-  <span class="comment">// 2. SLA Tier Overrides</span>
-  <span class="prop">perKeyRateLimit</span>: {
-    <span class="str">'enterprise-corp'</span>: { <span class="prop">requests</span>: <span class="num">100</span>, <span class="prop">perMs</span>: <span class="num">1000</span> },
-    <span class="str">'free-tier-user'</span>:  { <span class="prop">requests</span>: <span class="num">2</span>,   <span class="prop">perMs</span>: <span class="num">1000</span> },
-  },
-
-  <span class="comment">// 3. Deficit Round Robin: 10k items from tenant A will NOT block tenant B</span>
-  <span class="prop">fairShare</span>: <span class="keyword">true</span>,
+  <span class="comment">// Deduplicate by charge idempotency key (24-hour cache)</span>
+  <span class="prop">idempotencyKey</span>: (item) => <span class="str">`charge_${item.orderId}`</span>,
+  <span class="prop">idempotencyTtlMs</span>: <span class="num">24 * 60 * 60 * 1000</span>,
 
   <span class="prop">worker</span>: <span class="keyword">async</span> (item) => {
-    <span class="keyword">const</span> data = <span class="keyword">await</span> <span class="fn">syncExternalApi</span>(item);
-    <span class="keyword">return</span> { <span class="prop">id</span>: item.id, <span class="prop">updates</span>: data };
+    <span class="keyword">const</span> charge = <span class="keyword">await</span> stripe.charges.<span class="fn">create</span>({
+      <span class="prop">amount</span>: item.amount,
+      <span class="prop">currency</span>: <span class="str">'usd'</span>,
+    });
+    <span class="keyword">return</span> { <span class="prop">id</span>: item.id, <span class="prop">updates</span>: { <span class="prop">chargeId</span>: charge.id, <span class="prop">status</span>: <span class="str">'paid'</span> } };
   },
-  <span class="prop">onBatchFlush</span>: <span class="keyword">async</span> (batch) => db.<span class="fn">bulkUpdate</span>(batch),
-});
-
-<span class="comment">// Live update without restarting workers</span>
-queue.<span class="fn">setKeyRateLimit</span>(<span class="str">'free-tier-user'</span>, { <span class="prop">requests</span>: <span class="num">5</span>, <span class="prop">perMs</span>: <span class="num">1000</span> });</pre>
+  <span class="prop">onBatchFlush</span>: <span class="keyword">async</span> (batch) => db.<span class="fn">saveCharges</span>(batch),
+});</pre>
       </div>
 
       <h2 class="section-title">
@@ -767,87 +759,64 @@ queue.<span class="fn">setKeyRateLimit</span>(<span class="str">'free-tier-user'
     <div class="page-content">
       <div class="doc-header">
         <span>batch-rate-queue // Technical Whitepaper & User Manual</span>
-        <span class="badge">Distributed & Adaptive Features</span>
+        <span class="badge">Distributed & PgBouncer Recipes</span>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">8</span> Code Recipe: Zero-Redis Distributed PostgreSQL Coordination
+        <span class="section-num">8</span> Code Recipe: PgBouncer-Safe Distributed Lease Locks
       </h2>
       <p class="section-desc">
-        Coordinate global rate limits and shared circuit breaking across 10+ Kubernetes replicas using PostgreSQL:
+        Execute distributed scheduled jobs safely under PgBouncer transaction-pooling mode (Supabase, Neon, RDS Proxy):
       </p>
 
       <div class="code-container">
         <div class="code-header">
-          <span>distributed-worker.ts</span>
+          <span>pgbouncer-lease-lock.ts</span>
           <span>TypeScript</span>
         </div>
-        <pre><span class="keyword">import</span> { <span class="fn">createBatchRateQueue</span>, <span class="fn">httpRateLimitClassifier</span> } <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
+        <pre><span class="keyword">import</span> { <span class="fn">PgLeaseLock</span> } <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
 <span class="keyword">import</span> { Pool } <span class="keyword">from</span> <span class="str">'pg'</span>;
 
 <span class="keyword">const</span> pool = <span class="keyword">new</span> <span class="fn">Pool</span>({ <span class="prop">connectionString</span>: process.env.DATABASE_URL });
 
-<span class="keyword">const</span> queue = <span class="fn">createBatchRateQueue</span>({
-  <span class="prop">name</span>: <span class="str">'stripe-billing-sync'</span>,
-  <span class="prop">rateLimit</span>: { <span class="prop">requests</span>: <span class="num">25</span>, <span class="prop">perMs</span>: <span class="num">1000</span> }, <span class="comment">// Global 25 req/sec across ALL pods</span>
-  <span class="prop">batchFlush</span>: { <span class="prop">size</span>: <span class="num">50</span>, <span class="prop">intervalMs</span>: <span class="num">2000</span> },
-
-  <span class="comment">// 1. PostgreSQL Shared Token Bucket (No Redis!)</span>
-  <span class="prop">distributed</span>: {
-    <span class="prop">pool</span>,
-    <span class="prop">bucketKey</span>: <span class="str">'global:stripe-metering'</span>,
-  },
-
-  <span class="comment">// 2. PostgreSQL Shared Circuit Breaker</span>
-  <span class="prop">circuitBreaker</span>: {
-    <span class="prop">pool</span>,
-    <span class="prop">breakerKey</span>: <span class="str">'stripe-api'</span>,
-    <span class="prop">failureThreshold</span>: <span class="num">5</span>,  <span class="comment">// Trip after 5 consecutive failures</span>
-    <span class="prop">cooldownMs</span>: <span class="num">30000</span>,    <span class="comment">// 30s cooldown before trial request</span>
-  },
-
-  <span class="comment">// 3. Reactive Adaptive Throttling</span>
-  <span class="prop">adaptiveThrottle</span>: {
-    <span class="prop">enabled</span>: <span class="keyword">true</span>,
-    <span class="prop">errorRateThreshold</span>: <span class="num">0.2</span>, <span class="comment">// Back off if >20% failures</span>
-    <span class="prop">backoffFactor</span>: <span class="num">0.5</span>,
-    <span class="prop">honorRetryAfter</span>: <span class="keyword">true</span>,
-  },
-  <span class="prop">errorClassifier</span>: httpRateLimitClassifier,
-
-  <span class="prop">worker</span>: <span class="keyword">async</span> (item) => stripe.charges.<span class="fn">create</span>(item.payload),
-  <span class="prop">onBatchFlush</span>: <span class="keyword">async</span> (batch) => db.<span class="fn">saveCharges</span>(batch),
+<span class="keyword">const</span> lock = <span class="keyword">new</span> <span class="fn">PgLeaseLock</span>({
+  <span class="prop">pool</span>,
+  <span class="prop">lockKey</span>: <span class="str">'cron:daily-reconciliation'</span>,
+  <span class="prop">ttlMs</span>: <span class="num">30000</span>, <span class="comment">// 30-second lease with automatic heartbeat renewal</span>
 });
 
-queue.<span class="fn">on</span>(<span class="str">'circuitBreakerTripped'</span>, (e) => {
-  console.<span class="fn">warn</span>(<span class="str">`[ALERT] Circuit breaker ${e.breakerKey} TRIPPED!`</span>);
+<span class="comment">// Automatically acquires, heartbeats, executes, and releases safely</span>
+<span class="keyword">await</span> lock.<span class="fn">runWithLock</span>(<span class="keyword">async</span> () => {
+  console.<span class="fn">log</span>(<span class="str">'Running daily reconciliation with guaranteed single-replica execution!'</span>);
+  <span class="keyword">await</span> <span class="fn">reconcileAccounts</span>();
 });</pre>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">9</span> Real-Time Monitoring & Dashboard Stats
+        <span class="section-num">9</span> Code Recipe: Multi-Tenant Fair Scheduling (DRR)
       </h2>
       <p class="section-desc">
-        Feed real-time metrics into Prometheus, Grafana, or your <code>/metrics</code> health endpoint via <code>getBudgetStats()</code>:
+        Isolate rate limits per tenant and eliminate tenant starvation via Deficit Round Robin:
       </p>
 
       <div class="code-container">
         <div class="code-header">
-          <span>metrics-endpoint.ts</span>
+          <span>multi-tenant-fair-share.ts</span>
           <span>TypeScript</span>
         </div>
-        <pre>app.<span class="fn">get</span>(<span class="str">'/metrics/queue'</span>, (req, res) => {
-  <span class="keyword">const</span> stats = queue.<span class="fn">getBudgetStats</span>();
-  res.<span class="fn">json</span>({
-    <span class="prop">queueState</span>: stats.queue.state,
-    <span class="prop">pendingItems</span>: stats.queue.pending,
-    <span class="prop">tokenUtilization</span>: <span class="str">`${stats.rateLimit.utilizationPct}%`</span>,
-    <span class="prop">effectiveRate</span>: <span class="str">`${stats.rateLimit.effective.requests} req / ${stats.rateLimit.effective.perMs}ms`</span>,
-    <span class="prop">backlogSecondsRemaining</span>: stats.backlogEta.estimatedSecondsRemaining,
-    <span class="prop">estimatedCompletionTime</span>: stats.backlogEta.estimatedCompletionTime,
-    <span class="prop">perKeyStats</span>: stats.keys,
-    <span class="prop">circuitBreaker</span>: stats.circuitBreaker,
-  });
+        <pre><span class="keyword">const</span> queue = <span class="fn">createBatchRateQueue</span>({
+  <span class="prop">name</span>: <span class="str">'multi-tenant-sync'</span>,
+  <span class="prop">rateLimit</span>: { <span class="prop">requests</span>: <span class="num">10</span>, <span class="prop">perMs</span>: <span class="num">1000</span> },
+  <span class="prop">batchFlush</span>: { <span class="prop">size</span>: <span class="num">100</span>, <span class="prop">intervalMs</span>: <span class="num">2000</span> },
+  <span class="prop">rateLimitKey</span>: (item) => item.tenantId,
+  <span class="prop">perKeyRateLimit</span>: {
+    <span class="str">'enterprise-corp'</span>: { <span class="prop">requests</span>: <span class="num">100</span>, <span class="prop">perMs</span>: <span class="num">1000</span> },
+    <span class="str">'free-tier-user'</span>:  { <span class="prop">requests</span>: <span class="num">2</span>,   <span class="prop">perMs</span>: <span class="num">1000</span> },
+  },
+  <span class="comment">// DRR: 10k items from tenant A will never starve tenant B</span>
+  <span class="prop">fairShare</span>: <span class="keyword">true</span>,
+  <span class="prop">worker</span>: <span class="keyword">async</span> (item) => <span class="fn">syncTenantData</span>(item),
+  <span class="prop">onBatchFlush</span>: <span class="keyword">async</span> (batch) => db.<span class="fn">bulkUpdate</span>(batch),
 });</pre>
       </div>
     </div>
@@ -957,6 +926,24 @@ queue.<span class="fn">on</span>(<span class="str">'circuitBreakerTripped'</span
               <td>Atomic transaction write callback (or pre-built DB adapter).</td>
             </tr>
             <tr>
+              <td><code>idempotencyKey</code></td>
+              <td><code>(item) =&gt; string</code></td>
+              <td><code>undefined</code></td>
+              <td>Extracts deduplication key to prevent duplicate external side effects.</td>
+            </tr>
+            <tr>
+              <td><code>isolateBatchFailures</code></td>
+              <td><code>boolean</code></td>
+              <td><code>true</code></td>
+              <td>Salvages 49 valid rows when 1 row fails a constraint in a 50-item batch.</td>
+            </tr>
+            <tr>
+              <td><code>claimCheckThresholdBytes</code></td>
+              <td><code>number</code></td>
+              <td><code>65536</code></td>
+              <td>Offloads payloads &gt;64KB to preserve fast DB index scans.</td>
+            </tr>
+            <tr>
               <td><code>rateLimitKey</code></td>
               <td><code>(item) =&gt; string</code></td>
               <td><code>undefined</code></td>
@@ -969,22 +956,10 @@ queue.<span class="fn">on</span>(<span class="str">'circuitBreakerTripped'</span
               <td>Enables Deficit Round Robin scheduling across tenant queues.</td>
             </tr>
             <tr>
-              <td><code>perKeyRateLimit</code></td>
-              <td><code>Record&lt;string, Rate&gt;</code></td>
-              <td><code>undefined</code></td>
-              <td>Custom SLA rate limits per tenant/key.</td>
-            </tr>
-            <tr>
               <td><code>costExtractor</code></td>
               <td><code>(item) =&gt; number</code></td>
               <td><code>() =&gt; 1</code></td>
               <td>Pre-acquire token budget estimator (for LLM tokens/TPM).</td>
-            </tr>
-            <tr>
-              <td><code>adaptiveThrottle</code></td>
-              <td><code>AdaptiveConfig</code></td>
-              <td><code>undefined</code></td>
-              <td>Automatic backoff on 429 / Retry-After and smooth recovery.</td>
             </tr>
             <tr>
               <td><code>distributed</code></td>
