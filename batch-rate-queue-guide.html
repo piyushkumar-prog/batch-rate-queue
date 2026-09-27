@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>batch-rate-queue — Architecture Whitepaper & Developer Guide</title>
+  <title>batch-rate-queue — Architecture Whitepaper & Comprehensive Guide</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
     @page {
       size: A4;
-      margin: 12mm 12mm 12mm 12mm;
+      margin: 10mm 12mm 10mm 12mm;
     }
 
     * {
@@ -21,8 +21,8 @@
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: #1e293b;
       background: #ffffff;
-      line-height: 1.45;
-      font-size: 12px;
+      line-height: 1.4;
+      font-size: 11px;
       -webkit-font-smoothing: antialiased;
     }
 
@@ -31,8 +31,8 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      height: 270mm;
-      max-height: 270mm;
+      height: 275mm;
+      max-height: 275mm;
       overflow: hidden;
     }
 
@@ -49,10 +49,10 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 8px;
-      margin-bottom: 12px;
+      padding-bottom: 6px;
+      margin-bottom: 10px;
       border-bottom: 1.5px solid #e2e8f0;
-      font-size: 10px;
+      font-size: 9.5px;
       color: #64748b;
       font-weight: 500;
     }
@@ -63,7 +63,7 @@
       padding: 2px 7px;
       border-radius: 9999px;
       font-weight: 700;
-      font-size: 9.5px;
+      font-size: 9px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -73,54 +73,54 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-top: 6px;
-      margin-top: 8px;
+      padding-top: 5px;
+      margin-top: 6px;
       border-top: 1px solid #e2e8f0;
-      font-size: 9.5px;
+      font-size: 9px;
       color: #94a3b8;
     }
 
     /* Hero / Cover Banner */
     .hero-banner {
       background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #312e81 100%);
-      border-radius: 10px;
-      padding: 18px 22px;
+      border-radius: 8px;
+      padding: 16px 20px;
       color: #ffffff;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
     .hero-pretitle {
-      font-size: 10px;
+      font-size: 9.5px;
       letter-spacing: 1.2px;
       text-transform: uppercase;
       color: #818cf8;
       font-weight: 700;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
 
     .hero-title {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 800;
       letter-spacing: -0.5px;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
       background: linear-gradient(to right, #ffffff, #c7d2fe);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .hero-subtitle {
-      font-size: 11.5px;
+      font-size: 11px;
       color: #cbd5e1;
-      line-height: 1.5;
-      margin-bottom: 12px;
+      line-height: 1.45;
+      margin-bottom: 10px;
     }
 
     .hero-meta-row {
       display: flex;
-      gap: 16px;
-      padding-top: 8px;
+      gap: 14px;
+      padding-top: 6px;
       border-top: 1px solid rgba(255, 255, 255, 0.12);
-      font-size: 10px;
+      font-size: 9.5px;
       color: #94a3b8;
     }
 
@@ -130,10 +130,10 @@
 
     /* Section Titles */
     h2.section-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
       color: #0f172a;
-      margin: 12px 0 6px 0;
+      margin: 10px 0 5px 0;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -142,29 +142,36 @@
     h2.section-title .section-num {
       background: #4f46e5;
       color: #ffffff;
-      width: 19px;
-      height: 19px;
-      border-radius: 5px;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 800;
     }
 
     p.section-desc {
       color: #475569;
-      font-size: 11px;
-      margin-bottom: 8px;
-      line-height: 1.5;
+      font-size: 10.5px;
+      margin-bottom: 6px;
+      line-height: 1.45;
     }
 
-    /* Problem Grid */
+    /* Grids */
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 10px;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
     }
 
     .problem-card {
@@ -172,20 +179,20 @@
       border: 1px solid #fee2e2;
       border-left: 3.5px solid #ef4444;
       border-radius: 6px;
-      padding: 9px 12px;
+      padding: 8px 10px;
     }
 
     .problem-card h3 {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 700;
       color: #991b1b;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
 
     .problem-card p {
-      font-size: 10px;
+      font-size: 9.5px;
       color: #64748b;
-      line-height: 1.45;
+      line-height: 1.4;
     }
 
     /* Solution Box */
@@ -194,29 +201,29 @@
       border: 1px solid #bbf7d0;
       border-left: 3.5px solid #22c55e;
       border-radius: 6px;
-      padding: 10px 14px;
-      margin-bottom: 10px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
     }
 
     .solution-box h3 {
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 700;
       color: #166534;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
 
     .solution-box p {
-      font-size: 10.5px;
+      font-size: 10px;
       color: #15803d;
-      line-height: 1.45;
+      line-height: 1.4;
     }
 
     /* Architecture Visual Diagram */
     .arch-diagram {
       background: #0f172a;
-      border-radius: 8px;
-      padding: 12px 14px;
-      margin: 8px 0 10px 0;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin: 6px 0 8px 0;
       color: #e2e8f0;
     }
 
@@ -224,14 +231,14 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 6px;
+      gap: 4px;
     }
 
     .arch-node {
       background: #1e293b;
       border: 1px solid #334155;
-      border-radius: 6px;
-      padding: 8px 10px;
+      border-radius: 5px;
+      padding: 6px 8px;
       flex: 1;
       text-align: center;
     }
@@ -241,29 +248,34 @@
       background: #1e1b4b;
     }
 
+    .arch-node.highlight-green {
+      border-color: #22c55e;
+      background: #064e3b;
+    }
+
     .arch-node-title {
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 700;
       color: #f8fafc;
       margin-bottom: 2px;
     }
 
     .arch-node-sub {
-      font-size: 8.5px;
+      font-size: 8px;
       color: #94a3b8;
-      line-height: 1.25;
+      line-height: 1.2;
     }
 
     .arch-arrow {
       color: #818cf8;
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 800;
     }
 
     /* Comparison Table */
     .table-container {
-      margin: 8px 0;
-      border-radius: 6px;
+      margin: 6px 0;
+      border-radius: 5px;
       overflow: hidden;
       border: 1px solid #e2e8f0;
     }
@@ -271,7 +283,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 10px;
+      font-size: 9.5px;
       text-align: left;
     }
 
@@ -279,12 +291,12 @@
       background: #f1f5f9;
       color: #334155;
       font-weight: 700;
-      padding: 6px 10px;
+      padding: 5px 8px;
       border-bottom: 1px solid #cbd5e1;
     }
 
     td {
-      padding: 5px 10px;
+      padding: 4px 8px;
       border-bottom: 1px solid #f1f5f9;
       color: #475569;
     }
@@ -310,16 +322,16 @@
     /* Code Blocks */
     .code-container {
       background: #0f172a;
-      border-radius: 6px;
+      border-radius: 5px;
       overflow: hidden;
-      margin: 6px 0 10px 0;
+      margin: 5px 0 7px 0;
       border: 1px solid #334155;
     }
 
     .code-header {
       background: #1e293b;
-      padding: 4px 10px;
-      font-size: 9px;
+      padding: 3px 8px;
+      font-size: 8.5px;
       font-family: 'JetBrains Mono', monospace;
       color: #94a3b8;
       display: flex;
@@ -329,10 +341,10 @@
 
     pre {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 9.5px;
-      line-height: 1.45;
+      font-size: 9px;
+      line-height: 1.4;
       color: #e2e8f0;
-      padding: 9px 11px;
+      padding: 7px 9px;
       overflow-x: auto;
     }
 
@@ -347,55 +359,55 @@
     .pill-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin: 8px 0;
+      gap: 6px;
+      margin: 6px 0;
     }
 
     .pill-card {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 8px 10px;
+      border-radius: 5px;
+      padding: 6px 8px;
     }
 
     .pill-card strong {
       display: block;
-      font-size: 10px;
+      font-size: 9.5px;
       color: #0f172a;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
 
     .pill-card span {
-      font-size: 9px;
+      font-size: 8.5px;
       color: #64748b;
-      line-height: 1.35;
+      line-height: 1.3;
     }
 
     /* Highlight stats */
     .stat-bar {
       display: flex;
-      gap: 10px;
-      margin: 10px 0;
+      gap: 8px;
+      margin: 8px 0;
     }
 
     .stat-item {
       flex: 1;
       background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
       border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      padding: 8px;
+      border-radius: 5px;
+      padding: 6px;
       text-align: center;
     }
 
     .stat-value {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 800;
       color: #4f46e5;
       letter-spacing: -0.5px;
     }
 
     .stat-label {
-      font-size: 8.5px;
+      font-size: 8px;
       font-weight: 600;
       color: #64748b;
       text-transform: uppercase;
@@ -411,93 +423,94 @@
     <div class="page-content">
       <div class="doc-header">
         <span>batch-rate-queue // Technical Whitepaper & User Manual</span>
-        <span class="badge">Production Ready v1.0.0</span>
+        <span class="badge">v1.3.0 Enterprise Architecture</span>
       </div>
 
       <div class="hero-banner">
         <div class="hero-pretitle">Open Source Node.js Architecture</div>
         <div class="hero-title">batch-rate-queue</div>
         <div class="hero-subtitle">
-          Zero-Redis resilient background worker library combining high-precision token-bucket rate limiting with high-throughput in-memory batch SQL write-buffering.
+          The Zero-Redis Throttling & SQL Write-Buffering Layer. Built-in adaptive throttling, multi-tenant fair scheduling, cost-weighted token budgeting, and PostgreSQL distributed coordination.
         </div>
         <div class="hero-meta-row">
-          <div class="hero-meta-item">Package: <strong>npm install batch-rate-queue</strong></div>
+          <div class="hero-meta-item">Package: <strong>batch-rate-queue</strong></div>
+          <div class="hero-meta-item">Version: <strong>v1.3.0</strong></div>
           <div class="hero-meta-item">Runtime: <strong>Node.js >= 16</strong></div>
           <div class="hero-meta-item">License: <strong>MIT</strong></div>
-          <div class="hero-meta-item">Dependencies: <strong>0 Runtime Dependencies</strong></div>
+          <div class="hero-meta-item">Tests: <strong>141 / 141 Passing</strong></div>
         </div>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">1</span> The Problem Landscape: Why Async Background Jobs Fail
+        <span class="section-num">1</span> Real Production Gaps in Existing Queue Systems
       </h2>
       <p class="section-desc">
-        Modern backend applications interact with third-party web APIs (Stripe, OpenAI, OpenStreetMap, SendGrid) and write results back to relational databases. In standard Node.js implementations, this simple workflow introduces four crippling production failure modes:
+        Traditional background job queues (BullMQ, pg-boss, Celery) were built to distribute compute across worker pools. When modern applications interact with rate-limited APIs and relational databases, developers hit severe architectural walls:
       </p>
 
       <div class="grid-2">
         <div class="problem-card">
-          <h3>1. The "429 Too Many Requests" Cascade</h3>
+          <h3>1. Static Rates & Downstream Struggles</h3>
           <p>
-            APIs enforce strict rate limits (e.g., Nominatim allows 1 req/sec; OpenAI enforces TPM/RPM). Naive loops like <code>Promise.all()</code> burst hundreds of requests simultaneously, resulting in immediate HTTP 429 bans, dropped tasks, and IP blacklisting.
+            When downstream APIs encounter latency spikes, 429s, or 503s, queues like pg-boss and BullMQ continue hammering at static configured rates, piling up callbacks and crashing services.
           </p>
         </div>
 
         <div class="problem-card">
-          <h3>2. 10,000 Single SQL Writes (DB Exhaustion)</h3>
+          <h3>2. Single-Dimension Limiting (LLM Token Gap)</h3>
           <p>
-            Updating the database row-by-row inside each worker execution floods the connection pool with thousands of sequential roundtrips. Latency explodes, locks collide, CPU spikes to 100%, and incoming API requests face pool timeouts.
+            Modern AI APIs (OpenAI, Anthropic) limit by <strong>tokens per minute (TPM)</strong>, not requests. General queues treat 1 job = 1 unit, unable to budget variable prompt/completion weights.
           </p>
         </div>
 
         <div class="problem-card">
-          <h3>3. Heavy Redis & BullMQ Infrastructure Tax</h3>
+          <h3>3. Multi-Tenant Starvation & Paid Paywalls</h3>
           <p>
-            To prevent the above, teams deploy BullMQ or Celery. But this forces companies to provision, monitor, secure, and pay for an external Redis cluster ($20–$100+/mo) for simple background tasks that only run inside a single server process.
+            One tenant enqueueing 50k jobs blocks everyone else. BullMQ removed group rate limiting in v3 and made it paid-only. No free, robust multi-tenant scheduler existed.
           </p>
         </div>
 
         <div class="problem-card">
-          <h3>4. In-Flight Data Loss During Deployments</h3>
+          <h3>4. The Redis Tax & Database Contention</h3>
           <p>
-            Cloud platforms (Docker, Railway, Render, Fly.io, Kubernetes) trigger rolling restarts frequently. When a SIGTERM arrives, naive in-memory buffers terminate immediately, permanently losing dozens or hundreds of processed in-flight updates.
+            Forcing Redis infrastructure ($20–$100+/mo) for rate limiting, while naive workers fire 10,000 individual SQL UPDATEs, exhausting DB connection pools and CPU locks.
           </p>
         </div>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">2</span> Why We Made It: The "Zero-Redis" Philosophy
+        <span class="section-num">2</span> The "Zero-Redis" Architectural Paradigm
       </h2>
       <div class="solution-box">
-        <h3>The Missing Middle Ground in Backend Engineering</h3>
+        <h3>The Dedicated Throttling & Write-Buffering Layer</h3>
         <p>
-          Developers were stuck between two extremes: <strong>writing fragile ad-hoc loops</strong> that break in production, or <strong>introducing heavy message-broker infrastructure</strong> (Redis, RabbitMQ, BullMQ) that creates massive operational overhead. We created <code>batch-rate-queue</code> to provide enterprise-grade rate-limiting, batching, and graceful resilience <strong>entirely in-process</strong> with zero external dependencies and zero setup friction.
+          Instead of replacing your existing orchestrator, <code>batch-rate-queue</code> acts as the specialized <strong>throttling and write-buffering layer</strong> that sits in front of whatever executes your jobs. It runs purely in-process with optional PostgreSQL distributed coordination across pods—eliminating Redis entirely.
         </p>
       </div>
 
       <div class="stat-bar">
         <div class="stat-item">
           <div class="stat-value">0</div>
-          <div class="stat-label">External Daemons (No Redis)</div>
+          <div class="stat-label">Redis Clusters Needed</div>
         </div>
         <div class="stat-item">
           <div class="stat-value">98.5%</div>
-          <div class="stat-label">Reduction in DB Roundtrips</div>
+          <div class="stat-label">DB Roundtrip Reduction</div>
         </div>
         <div class="stat-item">
-          <div class="stat-value">&lt; 1 ms</div>
-          <div class="stat-label">Internal Memory Queue Latency</div>
+          <div class="stat-value">100%</div>
+          <div class="stat-label">Tenant Starvation Free (DRR)</div>
         </div>
         <div class="stat-item">
           <div class="stat-value">0 B</div>
-          <div class="stat-label">In-Flight Data Lost on Exit</div>
+          <div class="stat-label">Data Lost on SIGTERM</div>
         </div>
       </div>
     </div>
 
     <div class="doc-footer">
-      <span>batch-rate-queue Whitepaper</span>
-      <span>Page 1 of 4</span>
+      <span>batch-rate-queue Architectural Whitepaper</span>
+      <span>Page 1 of 5</span>
     </div>
   </div>
 
@@ -506,113 +519,138 @@
     <div class="page-content">
       <div class="doc-header">
         <span>batch-rate-queue // Technical Whitepaper & User Manual</span>
-        <span class="badge">Architecture & Mechanics</span>
+        <span class="badge">Architecture Blueprint & Core Modules</span>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">3</span> Architecture & How It Works
+        <span class="section-num">3</span> Complete Architecture Blueprint
       </h2>
       <p class="section-desc">
-        <code>batch-rate-queue</code> seamlessly decouples task ingestion, rate-limited execution, and database write batching into a clean, event-driven pipeline:
+        Incoming tasks flow through a multi-stage pipeline guaranteeing fair scheduling, token budgeting, adaptive backoff, and transactional batch writing:
       </p>
 
       <div class="arch-diagram">
         <div class="arch-flow">
           <div class="arch-node">
-            <div class="arch-node-title">1. Ingestion</div>
-            <div class="arch-node-sub"><code>add()</code> / <code>addMany()</code><br>FIFO Pending Items</div>
+            <div class="arch-node-title">1. Fair Scheduler</div>
+            <div class="arch-node-sub">Deficit Round Robin<br>Per-Key Queue Isolation</div>
           </div>
           <div class="arch-arrow">&rarr;</div>
           <div class="arch-node highlight">
-            <div class="arch-node-title">2. Token Throttler</div>
-            <div class="arch-node-sub">Token Bucket Math<br>Guaranteed Rate Limit</div>
+            <div class="arch-node-title">2. Rate Bucket</div>
+            <div class="arch-node-sub">Adaptive / Keyed / Pg<br>Cost-Weighted Tokens</div>
+          </div>
+          <div class="arch-arrow">&rarr;</div>
+          <div class="arch-node highlight-green">
+            <div class="arch-node-title">3. Circuit Breaker</div>
+            <div class="arch-node-sub">Pg Shared State<br>CLOSED / OPEN / HALF</div>
           </div>
           <div class="arch-arrow">&rarr;</div>
           <div class="arch-node">
-            <div class="arch-node-title">3. Worker Task</div>
-            <div class="arch-node-sub">API / Heavy Async<br>Per-item Execution</div>
+            <div class="arch-node-title">4. Worker Task</div>
+            <div class="arch-node-sub">API / LLM Call<br>Signals Live Outcome</div>
           </div>
           <div class="arch-arrow">&rarr;</div>
           <div class="arch-node highlight">
-            <div class="arch-node-title">4. Write Buffer</div>
-            <div class="arch-node-sub">Dual Flush Trigger<br>Size OR Interval Timer</div>
+            <div class="arch-node-title">5. Write Buffer</div>
+            <div class="arch-node-sub">Dual-Trigger Flush<br>Atomic Batch SQL</div>
           </div>
-          <div class="arch-arrow">&rarr;</div>
-          <div class="arch-node">
-            <div class="arch-node-title">5. DB Flush</div>
-            <div class="arch-node-sub">Prisma / pg / SQLite<br>Single Batch Query</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="pill-grid">
-        <div class="pill-card">
-          <strong>Mathematical Token Bucket</strong>
-          <span>Refills tokens at millisecond precision with drift compensation. Guarantees your worker never exceeds external API rate thresholds.</span>
-        </div>
-        <div class="pill-card">
-          <strong>Dual-Trigger Write Buffer</strong>
-          <span>Flushes when <code>size</code> items accumulate OR when <code>intervalMs</code> passes—whichever happens first. Zero stale data waiting forever.</span>
-        </div>
-        <div class="pill-card">
-          <strong>Retry & Exponential Backoff</strong>
-          <span>DB disconnects (e.g. <code>ECONNRESET</code>, deadlock <code>40P01</code>) automatically retry with jittered backoff without dropping the batch.</span>
-        </div>
-        <div class="pill-card">
-          <strong>Zero-Loss Graceful Drain</strong>
-          <span>Hooks into <code>SIGINT</code> and <code>SIGTERM</code>. Pauses new items, finishes in-flight workers, flushes remaining buffer, then exits 0 cleanly.</span>
-        </div>
-        <div class="pill-card">
-          <strong>Zero External Dependencies</strong>
-          <span>Implemented in 100% pure TypeScript. Zero npm dependencies, 21 kB package footprint, zero security vulnerability surface.</span>
-        </div>
-        <div class="pill-card">
-          <strong>Production Database Adapters</strong>
-          <span>Includes plug-and-play flush handlers for Prisma (<code>$transaction</code>), PostgreSQL (<code>pg</code> batch update), and SQLite (<code>better-sqlite3</code>).</span>
         </div>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">4</span> What Changes for Developers (Before vs. After)
+        <span class="section-num">4</span> Six Pillar Capabilities
       </h2>
-      <p class="section-desc">
-        Replacing ad-hoc custom background logic with <code>batch-rate-queue</code> provides dramatic operational and developer quality-of-life improvements:
-      </p>
+
+      <div class="pill-grid">
+        <div class="pill-card">
+          <strong>1. Reactive / Adaptive Throttling</strong>
+          <span>Sliding-window monitor reads live 429s, Retry-After headers, and rising error rates. Multiplies rate by backoffFactor and recovers smoothly.</span>
+        </div>
+        <div class="pill-card">
+          <strong>2. Cost-Weighted LLM Token Budgets</strong>
+          <span>Enforces token-budget caps (e.g. 40k TPM). Each task consumes its estimated/actual token weight rather than a flat 1 request.</span>
+        </div>
+        <div class="pill-card">
+          <strong>3. Multi-Tenant Fair-Share (DRR)</strong>
+          <span>Deficit Round Robin scheduling isolates tenant queues. A tenant with 50,000 items will never starve a tenant with 5 items.</span>
+        </div>
+        <div class="pill-card">
+          <strong>4. Zero-Redis Distributed Limiting</strong>
+          <span>Optional <code>PgTokenBucket</code> uses PostgreSQL row locks and time-delta refills to coordinate global rate limits across Kubernetes pods.</span>
+        </div>
+        <div class="pill-card">
+          <strong>5. PostgreSQL Distributed Circuit Breaker</strong>
+          <span>Coordinates breaker state across all pods. When an API goes down, all replicas trip immediately without hammering the destination.</span>
+        </div>
+        <div class="pill-card">
+          <strong>6. Pluggable Classifiers & Live Controls</strong>
+          <span>Built-in error classifiers for HTTP 429/503 and OpenAI/Anthropic errors. Live runtime reconfiguration via <code>setRateLimit()</code>.</span>
+        </div>
+      </div>
+
+      <h2 class="section-title">
+        <span class="section-num">5</span> Comprehensive Feature Comparison
+      </h2>
 
       <div class="table-container">
         <table>
           <thead>
             <tr>
-              <th>Engineering Vector</th>
-              <th>Traditional Approach (Ad-hoc / Naive)</th>
-              <th>With batch-rate-queue</th>
+              <th>Feature Capability</th>
+              <th>BullMQ</th>
+              <th>pg-boss</th>
+              <th>batch-rate-queue</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><strong>External API Calls</strong></td>
-              <td class="bad">Uncontrolled bursts trigger 429 Too Many Requests bans</td>
-              <td class="good">Mathematically throttled (e.g. exactly 1 req/sec)</td>
+              <td><strong>Redis Dependency</strong></td>
+              <td class="bad">Mandatory Redis Cluster</td>
+              <td class="good">Zero (Postgres only)</td>
+              <td class="good">Zero (Standalone or Postgres)</td>
             </tr>
             <tr>
-              <td><strong>Database Writes</strong></td>
-              <td class="bad">10,000 items = 10,000 individual SQL roundtrips</td>
-              <td class="good">10,000 items = ~100 batched multi-row transactions</td>
+              <td><strong>Write-Buffering (Batch SQL)</strong></td>
+              <td class="bad">None (Row-by-row updates)</td>
+              <td class="bad">None (Row-by-row updates)</td>
+              <td class="good">Native In-Memory Dual-Trigger Buffer</td>
             </tr>
             <tr>
-              <td><strong>Infrastructure Cost</strong></td>
-              <td class="bad">Requires external Redis cluster ($20–$100+/mo) or broker</td>
-              <td class="good">$0. Runs purely in-memory in existing Node process</td>
+              <td><strong>Reactive / Adaptive Throttling</strong></td>
+              <td class="bad">Static Fixed Limiter</td>
+              <td class="bad">Static Rate Limiter</td>
+              <td class="good">Live 429 & Retry-After Auto Backoff</td>
             </tr>
             <tr>
-              <td><strong>Container Restarts</strong></td>
-              <td class="bad">SIGTERM kills process immediately; in-flight writes lost</td>
-              <td class="good">Graceful shutdown handler drains all writes safely</td>
+              <td><strong>Cost-Weighted Token Budgets</strong></td>
+              <td class="bad">No (1 job = 1 token)</td>
+              <td class="bad">No (1 job = 1 token)</td>
+              <td class="good">Yes (Per-job variable token weight)</td>
             </tr>
             <tr>
-              <td><strong>Code Volume</strong></td>
-              <td class="bad">150–300 lines of custom setInterval / retry boilerplate</td>
-              <td class="good">Single clean <code>createBatchRateQueue()</code> config</td>
+              <td><strong>Per-Key Multi-Tenant Isolation</strong></td>
+              <td class="bad">Paid-only Pro tier</td>
+              <td class="bad">No native per-key buckets</td>
+              <td class="good">Built-in KeyedThrottler (Free/MIT)</td>
+            </tr>
+            <tr>
+              <td><strong>Fair-Share Tenant Scheduling</strong></td>
+              <td class="bad">FIFO single queue</td>
+              <td class="bad">FIFO single queue</td>
+              <td class="good">Deficit Round Robin (DRR) Fair Share</td>
+            </tr>
+            <tr>
+              <td><strong>Distributed Circuit Breaker</strong></td>
+              <td class="bad">Requires external tool</td>
+              <td class="bad">None</td>
+              <td class="good">Postgres Shared Circuit Breaker</td>
+            </tr>
+            <tr>
+              <td><strong>Runtime Limit Reconfiguration</strong></td>
+              <td class="bad">Requires worker restart</td>
+              <td class="bad">Requires worker restart</td>
+              <td class="good">Live <code>setRateLimit()</code> without restart</td>
             </tr>
           </tbody>
         </table>
@@ -620,8 +658,8 @@
     </div>
 
     <div class="doc-footer">
-      <span>batch-rate-queue Whitepaper</span>
-      <span>Page 2 of 4</span>
+      <span>batch-rate-queue Architectural Whitepaper</span>
+      <span>Page 2 of 5</span>
     </div>
   </div>
 
@@ -630,119 +668,97 @@
     <div class="page-content">
       <div class="doc-header">
         <span>batch-rate-queue // Technical Whitepaper & User Manual</span>
-        <span class="badge">Developer Guide & Usage</span>
+        <span class="badge">Production Code Recipes (Part 1)</span>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">5</span> Step-by-Step Developer Quickstart
+        <span class="section-num">6</span> Code Recipe: Multi-Tenant Fair Scheduling
       </h2>
       <p class="section-desc">
-        Install the package and instantiate a production queue in less than two minutes:
-      </p>
-
-      <div class="code-container" style="margin: 4px 0 8px 0;">
-        <div class="code-header">
-          <span>terminal</span>
-          <span>bash</span>
-        </div>
-        <pre>npm install batch-rate-queue</pre>
-      </div>
-
-      <p class="section-desc">
-        Real-world example: geocoding 5,000 addresses via Nominatim (1 req/sec limit) while batch-updating PostgreSQL via Prisma in chunks of 50:
+        Isolate rate limits per tenant and prevent tenant starvation using Deficit Round Robin fair scheduling:
       </p>
 
       <div class="code-container">
         <div class="code-header">
-          <span>src/worker.ts</span>
+          <span>multi-tenant-worker.ts</span>
           <span>TypeScript</span>
         </div>
         <pre><span class="keyword">import</span> { <span class="fn">createBatchRateQueue</span> } <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
-<span class="keyword">import</span> { PrismaClient } <span class="keyword">from</span> <span class="str">'@prisma/client'</span>;
 
-<span class="keyword">const</span> prisma = <span class="keyword">new</span> <span class="fn">PrismaClient</span>();
-
-<span class="comment">// 1. Define queue with rate-limit and batching configuration</span>
 <span class="keyword">const</span> queue = <span class="fn">createBatchRateQueue</span>({
-  <span class="prop">name</span>: <span class="str">'nominatim-enricher'</span>,
-  <span class="prop">rateLimit</span>: { <span class="prop">requests</span>: <span class="num">1</span>, <span class="prop">perMs</span>: <span class="num">1000</span> }, <span class="comment">// Never exceed 1 req/sec</span>
-  <span class="prop">batchFlush</span>: { <span class="prop">size</span>: <span class="num">50</span>, <span class="prop">intervalMs</span>: <span class="num">5000</span>, <span class="prop">maxRetries</span>: <span class="num">3</span> },
+  <span class="prop">name</span>: <span class="str">'tenant-sync-service'</span>,
+  <span class="prop">rateLimit</span>: { <span class="prop">requests</span>: <span class="num">10</span>, <span class="prop">perMs</span>: <span class="num">1000</span> }, <span class="comment">// Default SLA: 10 req/sec</span>
+  <span class="prop">batchFlush</span>: { <span class="prop">size</span>: <span class="num">100</span>, <span class="prop">intervalMs</span>: <span class="num">2000</span> },
 
-  <span class="comment">// Worker: Executed per item subject to rate limit</span>
-  <span class="prop">worker</span>: <span class="keyword">async</span> (item: { id: <span class="keyword">string</span>; address: <span class="keyword">string</span> }) => {
-    <span class="keyword">const</span> res = <span class="keyword">await</span> <span class="fn">fetch</span>(<span class="str">`https://nominatim.openstreetmap.org/search?q=<span class="str">${encodeURIComponent(item.address)}</span>&format=json`</span>);
-    <span class="keyword">const</span> [geo] = <span class="keyword">await</span> res.<span class="fn">json</span>();
-    <span class="keyword">return</span> { <span class="prop">id</span>: item.id, <span class="prop">lat</span>: <span class="fn">parseFloat</span>(geo.lat), <span class="prop">lon</span>: <span class="fn">parseFloat</span>(geo.lon) };
+  <span class="comment">// 1. Isolate rate buckets by tenant ID</span>
+  <span class="prop">rateLimitKey</span>: (item) => item.tenantId,
+
+  <span class="comment">// 2. SLA Tier Overrides</span>
+  <span class="prop">perKeyRateLimit</span>: {
+    <span class="str">'enterprise-corp'</span>: { <span class="prop">requests</span>: <span class="num">100</span>, <span class="prop">perMs</span>: <span class="num">1000</span> },
+    <span class="str">'free-tier-user'</span>:  { <span class="prop">requests</span>: <span class="num">2</span>,   <span class="prop">perMs</span>: <span class="num">1000</span> },
   },
 
-  <span class="comment">// Batch Flush: Executed with up to 50 results at once in a single transaction</span>
-  <span class="prop">onBatchFlush</span>: <span class="keyword">async</span> (batch) => {
-    <span class="keyword">await</span> prisma.<span class="fn">$transaction</span>(
-      batch.<span class="fn">map</span>(loc => prisma.place.<span class="fn">update</span>({
-        <span class="prop">where</span>: { <span class="prop">id</span>: loc.id },
-        <span class="prop">data</span>: { <span class="prop">latitude</span>: loc.lat, <span class="prop">longitude</span>: loc.lon }
-      }))
-    );
-  }
+  <span class="comment">// 3. Deficit Round Robin: 10k items from tenant A will NOT block tenant B</span>
+  <span class="prop">fairShare</span>: <span class="keyword">true</span>,
+
+  <span class="prop">worker</span>: <span class="keyword">async</span> (item) => {
+    <span class="keyword">const</span> data = <span class="keyword">await</span> <span class="fn">syncExternalApi</span>(item);
+    <span class="keyword">return</span> { <span class="prop">id</span>: item.id, <span class="prop">updates</span>: data };
+  },
+  <span class="prop">onBatchFlush</span>: <span class="keyword">async</span> (batch) => db.<span class="fn">bulkUpdate</span>(batch),
 });
 
-<span class="comment">// 2. Enqueue tasks safely and wait for completion</span>
-<span class="keyword">await</span> queue.<span class="fn">addMany</span>(unprocessedLocations);
-<span class="keyword">await</span> queue.<span class="fn">waitUntilDrained</span>();</pre>
+<span class="comment">// Live update without restarting workers</span>
+queue.<span class="fn">setKeyRateLimit</span>(<span class="str">'free-tier-user'</span>, { <span class="prop">requests</span>: <span class="num">5</span>, <span class="prop">perMs</span>: <span class="num">1000</span> });</pre>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">6</span> Lifecycle & Queue Control API
+        <span class="section-num">7</span> Code Recipe: LLM Token-Budget Limiting (TPM)
       </h2>
+      <p class="section-desc">
+        Enforce token-based budgets (e.g. 40,000 tokens/min) for OpenAI or Anthropic API calls with pre-acquisition and actual-cost reconciliation:
+      </p>
 
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Method / Event</th>
-              <th>Type</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>add(item)</code></td>
-              <td><code>Promise&lt;void&gt;</code></td>
-              <td>Adds a single task to the FIFO queue.</td>
-            </tr>
-            <tr>
-              <td><code>addMany(items)</code></td>
-              <td><code>Promise&lt;void&gt;</code></td>
-              <td>Bulk-adds an array of tasks to the queue.</td>
-            </tr>
-            <tr>
-              <td><code>pause() / resume()</code></td>
-              <td><code>void</code></td>
-              <td>Pauses dequeuing or resumes active processing immediately.</td>
-            </tr>
-            <tr>
-              <td><code>waitUntilDrained()</code></td>
-              <td><code>Promise&lt;void&gt;</code></td>
-              <td>Resolves only when all tasks are processed AND write buffer is flushed.</td>
-            </tr>
-            <tr>
-              <td><code>getStats()</code></td>
-              <td><code>QueueStats</code></td>
-              <td>Returns live counters: <code>processed</code>, <code>failed</code>, <code>pending</code>, <code>buffered</code>.</td>
-            </tr>
-            <tr>
-              <td><code>event: 'batchFlushed'</code></td>
-              <td><code>(batch) =&gt; void</code></td>
-              <td>Emitted every time a database write batch commits successfully.</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="code-container">
+        <div class="code-header">
+          <span>llm-embeddings-worker.ts</span>
+          <span>TypeScript</span>
+        </div>
+        <pre><span class="keyword">import</span> { <span class="fn">createBatchRateQueue</span>, <span class="fn">llmApiClassifier</span> } <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
+<span class="keyword">import</span> OpenAI <span class="keyword">from</span> <span class="str">'openai'</span>;
+
+<span class="keyword">const</span> openai = <span class="keyword">new</span> <span class="fn">OpenAI</span>();
+
+<span class="keyword">const</span> queue = <span class="fn">createBatchRateQueue</span>({
+  <span class="prop">name</span>: <span class="str">'openai-embeddings'</span>,
+  <span class="comment">// Budget: 40,000 tokens per minute</span>
+  <span class="prop">rateLimit</span>: { <span class="prop">requests</span>: <span class="num">40000</span>, <span class="prop">perMs</span>: <span class="num">60000</span>, <span class="prop">costBased</span>: <span class="keyword">true</span> },
+  <span class="prop">batchFlush</span>: { <span class="prop">size</span>: <span class="num">50</span>, <span class="prop">intervalMs</span>: <span class="num">3000</span> },
+
+  <span class="comment">// Estimate token cost before acquire</span>
+  <span class="prop">costExtractor</span>: (item) => Math.<span class="fn">ceil</span>(item.text.length / <span class="num">4</span>),
+  <span class="prop">errorClassifier</span>: llmApiClassifier,
+
+  <span class="prop">worker</span>: <span class="keyword">async</span> (item) => {
+    <span class="keyword">const</span> res = <span class="keyword">await</span> openai.embeddings.<span class="fn">create</span>({
+      <span class="prop">model</span>: <span class="str">'text-embedding-3-small'</span>,
+      <span class="prop">input</span>: item.text,
+    });
+    <span class="keyword">return</span> {
+      <span class="prop">id</span>: item.id,
+      <span class="prop">updates</span>: { <span class="prop">embedding</span>: res.data[<span class="num">0</span>].embedding },
+      <span class="prop">meta</span>: { <span class="prop">actualCost</span>: res.usage.total_tokens }, <span class="comment">// Exact actual cost</span>
+    };
+  },
+  <span class="prop">onBatchFlush</span>: <span class="keyword">async</span> (batch) => db.<span class="fn">saveVectors</span>(batch),
+});</pre>
       </div>
     </div>
 
     <div class="doc-footer">
-      <span>batch-rate-queue Whitepaper</span>
-      <span>Page 3 of 4</span>
+      <span>batch-rate-queue Architectural Whitepaper</span>
+      <span>Page 3 of 5</span>
     </div>
   </div>
 
@@ -751,96 +767,257 @@
     <div class="page-content">
       <div class="doc-header">
         <span>batch-rate-queue // Technical Whitepaper & User Manual</span>
-        <span class="badge">Adapters & Best Practices</span>
+        <span class="badge">Distributed & Adaptive Features</span>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">7</span> Pre-Built Database Adapters
+        <span class="section-num">8</span> Code Recipe: Zero-Redis Distributed PostgreSQL Coordination
       </h2>
       <p class="section-desc">
-        <code>batch-rate-queue</code> exports modular, drop-in flush handlers for popular database drivers:
+        Coordinate global rate limits and shared circuit breaking across 10+ Kubernetes replicas using PostgreSQL:
       </p>
 
-      <div class="grid-2">
+      <div class="code-container">
+        <div class="code-header">
+          <span>distributed-worker.ts</span>
+          <span>TypeScript</span>
+        </div>
+        <pre><span class="keyword">import</span> { <span class="fn">createBatchRateQueue</span>, <span class="fn">httpRateLimitClassifier</span> } <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
+<span class="keyword">import</span> { Pool } <span class="keyword">from</span> <span class="str">'pg'</span>;
+
+<span class="keyword">const</span> pool = <span class="keyword">new</span> <span class="fn">Pool</span>({ <span class="prop">connectionString</span>: process.env.DATABASE_URL });
+
+<span class="keyword">const</span> queue = <span class="fn">createBatchRateQueue</span>({
+  <span class="prop">name</span>: <span class="str">'stripe-billing-sync'</span>,
+  <span class="prop">rateLimit</span>: { <span class="prop">requests</span>: <span class="num">25</span>, <span class="prop">perMs</span>: <span class="num">1000</span> }, <span class="comment">// Global 25 req/sec across ALL pods</span>
+  <span class="prop">batchFlush</span>: { <span class="prop">size</span>: <span class="num">50</span>, <span class="prop">intervalMs</span>: <span class="num">2000</span> },
+
+  <span class="comment">// 1. PostgreSQL Shared Token Bucket (No Redis!)</span>
+  <span class="prop">distributed</span>: {
+    <span class="prop">pool</span>,
+    <span class="prop">bucketKey</span>: <span class="str">'global:stripe-metering'</span>,
+  },
+
+  <span class="comment">// 2. PostgreSQL Shared Circuit Breaker</span>
+  <span class="prop">circuitBreaker</span>: {
+    <span class="prop">pool</span>,
+    <span class="prop">breakerKey</span>: <span class="str">'stripe-api'</span>,
+    <span class="prop">failureThreshold</span>: <span class="num">5</span>,  <span class="comment">// Trip after 5 consecutive failures</span>
+    <span class="prop">cooldownMs</span>: <span class="num">30000</span>,    <span class="comment">// 30s cooldown before trial request</span>
+  },
+
+  <span class="comment">// 3. Reactive Adaptive Throttling</span>
+  <span class="prop">adaptiveThrottle</span>: {
+    <span class="prop">enabled</span>: <span class="keyword">true</span>,
+    <span class="prop">errorRateThreshold</span>: <span class="num">0.2</span>, <span class="comment">// Back off if >20% failures</span>
+    <span class="prop">backoffFactor</span>: <span class="num">0.5</span>,
+    <span class="prop">honorRetryAfter</span>: <span class="keyword">true</span>,
+  },
+  <span class="prop">errorClassifier</span>: httpRateLimitClassifier,
+
+  <span class="prop">worker</span>: <span class="keyword">async</span> (item) => stripe.charges.<span class="fn">create</span>(item.payload),
+  <span class="prop">onBatchFlush</span>: <span class="keyword">async</span> (batch) => db.<span class="fn">saveCharges</span>(batch),
+});
+
+queue.<span class="fn">on</span>(<span class="str">'circuitBreakerTripped'</span>, (e) => {
+  console.<span class="fn">warn</span>(<span class="str">`[ALERT] Circuit breaker ${e.breakerKey} TRIPPED!`</span>);
+});</pre>
+      </div>
+
+      <h2 class="section-title">
+        <span class="section-num">9</span> Real-Time Monitoring & Dashboard Stats
+      </h2>
+      <p class="section-desc">
+        Feed real-time metrics into Prometheus, Grafana, or your <code>/metrics</code> health endpoint via <code>getBudgetStats()</code>:
+      </p>
+
+      <div class="code-container">
+        <div class="code-header">
+          <span>metrics-endpoint.ts</span>
+          <span>TypeScript</span>
+        </div>
+        <pre>app.<span class="fn">get</span>(<span class="str">'/metrics/queue'</span>, (req, res) => {
+  <span class="keyword">const</span> stats = queue.<span class="fn">getBudgetStats</span>();
+  res.<span class="fn">json</span>({
+    <span class="prop">queueState</span>: stats.queue.state,
+    <span class="prop">pendingItems</span>: stats.queue.pending,
+    <span class="prop">tokenUtilization</span>: <span class="str">`${stats.rateLimit.utilizationPct}%`</span>,
+    <span class="prop">effectiveRate</span>: <span class="str">`${stats.rateLimit.effective.requests} req / ${stats.rateLimit.effective.perMs}ms`</span>,
+    <span class="prop">backlogSecondsRemaining</span>: stats.backlogEta.estimatedSecondsRemaining,
+    <span class="prop">estimatedCompletionTime</span>: stats.backlogEta.estimatedCompletionTime,
+    <span class="prop">perKeyStats</span>: stats.keys,
+    <span class="prop">circuitBreaker</span>: stats.circuitBreaker,
+  });
+});</pre>
+      </div>
+    </div>
+
+    <div class="doc-footer">
+      <span>batch-rate-queue Architectural Whitepaper</span>
+      <span>Page 4 of 5</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 5 ==================== -->
+  <div class="page">
+    <div class="page-content">
+      <div class="doc-header">
+        <span>batch-rate-queue // Technical Whitepaper & User Manual</span>
+        <span class="badge">API Reference & Adapters</span>
+      </div>
+
+      <h2 class="section-title">
+        <span class="section-num">10</span> Native Database Adapters
+      </h2>
+
+      <div class="grid-3">
         <div class="code-container" style="margin: 0;">
           <div class="code-header">
             <span>Prisma Adapter</span>
-            <span>subpath export</span>
           </div>
           <pre><span class="keyword">import</span> { <span class="fn">createPrismaFlushHandler</span> }
-  <span class="keyword">from</span> <span class="str">'batch-rate-queue/adapters/prisma'</span>;
+  <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
 
-<span class="keyword">const</span> queue = <span class="fn">createBatchRateQueue</span>({
-  <span class="comment">// ...</span>
-  <span class="prop">onBatchFlush</span>: <span class="fn">createPrismaFlushHandler</span>({
-    <span class="prop">prisma</span>,
-    <span class="prop">buildOperation</span>: (item) =>
-      prisma.user.<span class="fn">update</span>({
-        <span class="prop">where</span>: { <span class="prop">id</span>: item.id },
-        <span class="prop">data</span>: item.changes
-      })
-  })
-});</pre>
+<span class="keyword">const</span> onFlush =
+  <span class="fn">createPrismaFlushHandler</span>(
+    prisma, <span class="str">'location'</span>
+  );</pre>
         </div>
 
         <div class="code-container" style="margin: 0;">
           <div class="code-header">
-            <span>PostgreSQL (pg) Adapter</span>
-            <span>subpath export</span>
+            <span>PostgreSQL (pg)</span>
           </div>
           <pre><span class="keyword">import</span> { <span class="fn">createPgFlushHandler</span> }
-  <span class="keyword">from</span> <span class="str">'batch-rate-queue/adapters/pg'</span>;
+  <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
 
-<span class="keyword">const</span> queue = <span class="fn">createBatchRateQueue</span>({
-  <span class="comment">// ...</span>
-  <span class="prop">onBatchFlush</span>: <span class="fn">createPgFlushHandler</span>({
-    <span class="prop">pool</span>,
-    <span class="prop">query</span>: <span class="str">'UPDATE users SET status = $1 WHERE id = $2'</span>,
-    <span class="prop">mapItemToParams</span>: (u) => [u.status, u.id]
-  })
-});</pre>
+<span class="keyword">const</span> onFlush =
+  <span class="fn">createPgFlushHandler</span>(
+    pool, <span class="str">'locations'</span>
+  );</pre>
+        </div>
+
+        <div class="code-container" style="margin: 0;">
+          <div class="code-header">
+            <span>SQLite</span>
+          </div>
+          <pre><span class="keyword">import</span> { <span class="fn">createSqliteFlushHandler</span> }
+  <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
+
+<span class="keyword">const</span> onFlush =
+  <span class="fn">createSqliteFlushHandler</span>(
+    db, <span class="str">'locations'</span>
+  );</pre>
         </div>
       </div>
 
-      <h2 class="section-title" style="margin-top: 14px;">
-        <span class="section-num">8</span> Production Checklist & Best Practices
+      <h2 class="section-title" style="margin-top: 10px;">
+        <span class="section-num">11</span> Full Options Reference Table
       </h2>
 
-      <div class="pill-grid">
-        <div class="pill-card">
-          <strong>1. Size vs. Interval Balance</strong>
-          <span>Set <code>size: 50–100</code> with <code>intervalMs: 2000–5000</code>. This guarantees timely writes even when task ingestion slows down.</span>
-        </div>
-        <div class="pill-card">
-          <strong>2. Rate Limit Match</strong>
-          <span>Always match provider quotas. If an API allows 60 requests/min, configure <code>{ requests: 60, perMs: 60000 }</code>.</span>
-        </div>
-        <div class="pill-card">
-          <strong>3. Graceful Shutdown</strong>
-          <span>Keep <code>gracefulShutdown: true</code> (default) enabled in containers (Kubernetes/Docker) to prevent dropped writes on restarts.</span>
-        </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Property</th>
+              <th>Type</th>
+              <th>Default</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>name</code></td>
+              <td><code>string</code></td>
+              <td><em>required</em></td>
+              <td>Queue identifier for logs, metrics, and default bucket keys.</td>
+            </tr>
+            <tr>
+              <td><code>rateLimit</code></td>
+              <td><code>RateLimitConfig</code></td>
+              <td><em>required</em></td>
+              <td>Token bucket rate limit (<code>requests</code>, <code>perMs</code>, <code>costBased</code>).</td>
+            </tr>
+            <tr>
+              <td><code>batchFlush</code></td>
+              <td><code>BatchFlushConfig</code></td>
+              <td><em>required</em></td>
+              <td>Transactional write buffer trigger (<code>size</code>, <code>intervalMs</code>).</td>
+            </tr>
+            <tr>
+              <td><code>worker</code></td>
+              <td><code>Function</code></td>
+              <td><em>required</em></td>
+              <td>Worker execution per item returning <code>{ id, updates, meta }</code>.</td>
+            </tr>
+            <tr>
+              <td><code>onBatchFlush</code></td>
+              <td><code>Function</code></td>
+              <td><em>required</em></td>
+              <td>Atomic transaction write callback (or pre-built DB adapter).</td>
+            </tr>
+            <tr>
+              <td><code>rateLimitKey</code></td>
+              <td><code>(item) =&gt; string</code></td>
+              <td><code>undefined</code></td>
+              <td>Isolates token buckets per tenant, API key, or destination.</td>
+            </tr>
+            <tr>
+              <td><code>fairShare</code></td>
+              <td><code>boolean</code></td>
+              <td><code>false</code></td>
+              <td>Enables Deficit Round Robin scheduling across tenant queues.</td>
+            </tr>
+            <tr>
+              <td><code>perKeyRateLimit</code></td>
+              <td><code>Record&lt;string, Rate&gt;</code></td>
+              <td><code>undefined</code></td>
+              <td>Custom SLA rate limits per tenant/key.</td>
+            </tr>
+            <tr>
+              <td><code>costExtractor</code></td>
+              <td><code>(item) =&gt; number</code></td>
+              <td><code>() =&gt; 1</code></td>
+              <td>Pre-acquire token budget estimator (for LLM tokens/TPM).</td>
+            </tr>
+            <tr>
+              <td><code>adaptiveThrottle</code></td>
+              <td><code>AdaptiveConfig</code></td>
+              <td><code>undefined</code></td>
+              <td>Automatic backoff on 429 / Retry-After and smooth recovery.</td>
+            </tr>
+            <tr>
+              <td><code>distributed</code></td>
+              <td><code>DistributedConfig</code></td>
+              <td><code>undefined</code></td>
+              <td>PostgreSQL-backed shared token bucket (zero-Redis multi-pod).</td>
+            </tr>
+            <tr>
+              <td><code>circuitBreaker</code></td>
+              <td><code>CircuitBreakerConfig</code></td>
+              <td><code>undefined</code></td>
+              <td>PostgreSQL-backed cross-process failure circuit breaker.</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <h2 class="section-title">
-        <span class="section-num">9</span> Project & Ecosystem Information
+      <h2 class="section-title" style="margin-top: 8px;">
+        <span class="section-num">12</span> Official Ecosystem Resources
       </h2>
-      <div class="solution-box" style="background: #f8fafc; border-color: #cbd5e1; border-left-color: #4f46e5; margin-bottom: 0;">
-        <h3 style="color: #1e1b4b;">Official Open-Source Resources</h3>
-        <p style="color: #475569; margin-bottom: 6px;">
-          <code>batch-rate-queue</code> is actively maintained and free under the MIT license.
-        </p>
-        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 1.7; color: #334155;">
-          &bull; <strong>npm Registry:</strong> https://www.npmjs.com/package/batch-rate-queue<br>
-          &bull; <strong>GitHub Repository:</strong> https://github.com/piyushkumar-prog/batch-rate-queue<br>
-          &bull; <strong>Issue Tracker:</strong> https://github.com/piyushkumar-prog/batch-rate-queue/issues<br>
+      <div class="solution-box" style="background: #f8fafc; border-color: #cbd5e1; border-left-color: #4f46e5; margin-bottom: 0; padding: 6px 10px;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; line-height: 1.6; color: #334155;">
+          &bull; <strong>npm:</strong> https://www.npmjs.com/package/batch-rate-queue<br>
+          &bull; <strong>GitHub:</strong> https://github.com/piyushkumar-prog/batch-rate-queue<br>
+          &bull; <strong>License:</strong> MIT (Open Source, Free for Commercial Use)<br>
           &bull; <strong>Author:</strong> Piyush Kumar (@piyushkumar-prog)
         </div>
       </div>
     </div>
 
     <div class="doc-footer">
-      <span>batch-rate-queue Whitepaper</span>
-      <span>Page 4 of 4</span>
+      <span>batch-rate-queue Architectural Whitepaper</span>
+      <span>Page 5 of 5</span>
     </div>
   </div>
 
