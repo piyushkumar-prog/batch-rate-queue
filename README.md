@@ -1,6 +1,13 @@
 # BatchRateQueue
 
-> **Zero-Redis Resilient Background Worker, Throttling & Write-Buffering Layer**
+[![npm version](https://img.shields.io/badge/npm-v1.4.0-blue.svg)](https://www.npmjs.com/package/batch-rate-queue)
+[![Tests](https://img.shields.io/badge/tests-161%20passing-brightgreen.svg)](https://github.com/piyushkumar-prog/batch-rate-queue)
+[![Zero Dependencies](https://img.shields.io/badge/dependencies-0%20runtime-purple.svg)](https://www.npmjs.com/package/batch-rate-queue)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> **Zero-Redis Resilient Background Worker, Throttling & Write-Buffering Layer for Node.js & TypeScript**
+>
+> 📖 *Looking for the full architectural whitepaper? Download the 6-page [BatchRateQueue Guide (PDF)](./batch-rate-queue-guide.pdf).*
 
 BatchRateQueue is an embedded Node.js throttling and write-buffering layer for background processing. It gives you precise token-bucket rate limiting, automatic reactive/adaptive throttling, per-tenant fair-share scheduling, distributed rate limiting with PostgreSQL, side-effect idempotency deduplication, partial batch failure isolation, and high-throughput transactional database batching — **without requiring Redis or external worker infrastructure**.
 
