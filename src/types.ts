@@ -298,6 +298,48 @@ export interface BatchRateQueueOptions<T> {
    * @default () => 1
    */
   costExtractor?: (item: T) => number;
+
+  /**
+   * Extract a rate-limit key from each item.
+   * When provided, items are rate-limited independently per key
+   * (e.g., per tenant ID, per API key, per destination hostname).
+   *
+   * Each unique key gets its own independent token bucket.
+   * This is the feature BullMQ removed in v3 and made paid-only.
+   *
+   * @example
+   * ```ts
+   * rateLimitKey: (item) => item.tenantId
+   * ```
+   */
+  rateLimitKey?: (item: T) => string;
+
+  /**
+   * Per-key rate limit overrides.
+   * When `rateLimitKey` is set, you can specify different rate limits for specific keys.
+   * Keys not listed here use the default `rateLimit` config.
+   *
+   * @example
+   * ```ts
+   * perKeyRateLimit: {
+   *   'premium-tenant': { requests: 100, perMs: 1000 },
+   *   'free-tenant': { requests: 5, perMs: 1000 },
+   * }
+   * ```
+   */
+  perKeyRateLimit?: Record<string, RateLimitConfig>;
+
+  /**
+   * Enable weighted fair-share scheduling across keys.
+   * When true (and `rateLimitKey` is set), the queue uses Deficit Round Robin
+   * to prevent one heavy key from starving others.
+   *
+   * Without this, all items are processed FIFO regardless of key, so a
+   * tenant with 10,000 items blocks a tenant with 10 items.
+   *
+   * @default false
+   */
+  fairShare?: boolean;
 }
 
 /**

@@ -11,6 +11,8 @@ import {
 } from '../types';
 import { Throttler } from './throttler';
 import { AdaptiveThrottler, WorkerOutcome } from './adaptive-throttler';
+import { KeyedThrottler } from './keyed-throttler';
+import { FairScheduler } from './fair-scheduler';
 import { WriteBuffer } from './buffer';
 import { setupGracefulShutdown } from './shutdown';
 
@@ -18,7 +20,8 @@ import { setupGracefulShutdown } from './shutdown';
  * BatchRateQueue
  *
  * The main orchestrator that ties together:
- *   - A token-bucket rate limiter (Throttler or AdaptiveThrottler)
+ *   - A token-bucket rate limiter (Throttler, AdaptiveThrottler, or KeyedThrottler)
+ *   - An optional fair-share scheduler (FairScheduler)
  *   - An in-memory write buffer (WriteBuffer)
  *   - A self-scheduling drain loop
  *   - Graceful shutdown handling
@@ -28,6 +31,10 @@ import { setupGracefulShutdown } from './shutdown';
  *   - Cost-weighted rate limiting (for LLM token-based budgets)
  *   - Runtime-adjustable rate limits (setRateLimit / setBatchFlush)
  *   - Pluggable error classifiers (httpRateLimitClassifier, llmApiClassifier, etc.)
+ *
+ * v1.2.0 additions:
+ *   - Per-key/per-tenant rate limiting (rateLimitKey + perKeyRateLimit)
+ *   - Weighted fair-share scheduling (fairShare: true) via Deficit Round Robin
  *
  * Usage:
  * ```ts
@@ -56,9 +63,13 @@ export class BatchRateQueue<T> extends EventEmitter {
     BatchRateQueueOptions<T>;
 
   private readonly throttler: Throttler;
+  private readonly keyedThrottler: KeyedThrottler | null;
+  private readonly scheduler: FairScheduler<T> | null;
   private readonly buffer: WriteBuffer;
   private readonly isAdaptive: boolean;
   private readonly isCostBased: boolean;
+  private readonly isKeyed: boolean;
+  private readonly isFairShare: boolean;
 
   private pendingItems: T[] = [];
   private processedCount = 0;
@@ -84,12 +95,13 @@ export class BatchRateQueue<T> extends EventEmitter {
 
     this.isCostBased = !!this.options.rateLimit.costBased;
     this.isAdaptive = !!this.options.adaptiveThrottle?.enabled;
+    this.isKeyed = !!this.options.rateLimitKey;
+    this.isFairShare = !!this.options.fairShare && this.isKeyed;
 
     // Initialize rate limiter (adaptive or standard)
     if (this.isAdaptive && this.options.adaptiveThrottle) {
       const adaptiveConfig = {
         ...this.options.adaptiveThrottle,
-        // Wire the onRateChange callback to also emit an event
         onRateChange: (event: RateChangeEvent) => {
           this.options.adaptiveThrottle?.onRateChange?.(event);
           this.emit('rateLimitChanged', event);
@@ -98,6 +110,23 @@ export class BatchRateQueue<T> extends EventEmitter {
       this.throttler = new AdaptiveThrottler(this.options.rateLimit, adaptiveConfig);
     } else {
       this.throttler = new Throttler(this.options.rateLimit);
+    }
+
+    // Initialize per-key throttler if rateLimitKey is set
+    if (this.isKeyed) {
+      this.keyedThrottler = new KeyedThrottler(
+        this.options.rateLimit,
+        this.options.perKeyRateLimit,
+      );
+    } else {
+      this.keyedThrottler = null;
+    }
+
+    // Initialize fair-share scheduler if enabled
+    if (this.isFairShare && this.options.rateLimitKey) {
+      this.scheduler = new FairScheduler<T>(this.options.rateLimitKey);
+    } else {
+      this.scheduler = null;
     }
 
     // Initialize write buffer
@@ -116,8 +145,6 @@ export class BatchRateQueue<T> extends EventEmitter {
     });
 
     // Prevent unhandled 'error' event crashes from EventEmitter.
-    // If the user hasn't registered an error listener, swallow the event
-    // (errors are still reported via onError callback).
     this.on('error', () => {});
 
     // Register graceful shutdown
@@ -133,7 +160,11 @@ export class BatchRateQueue<T> extends EventEmitter {
    * Enqueue a single item for processing.
    */
   add(item: T): void {
-    this.pendingItems.push(item);
+    if (this.scheduler) {
+      this.scheduler.add(item);
+    } else {
+      this.pendingItems.push(item);
+    }
 
     // Auto-start if not running
     if (!this.running && !this.paused) {
@@ -145,7 +176,11 @@ export class BatchRateQueue<T> extends EventEmitter {
    * Enqueue multiple items for processing.
    */
   addMany(items: T[]): void {
-    this.pendingItems.push(...items);
+    if (this.scheduler) {
+      this.scheduler.addMany(items);
+    } else {
+      this.pendingItems.push(...items);
+    }
 
     // Auto-start if not running
     if (!this.running && !this.paused) {
@@ -191,7 +226,7 @@ export class BatchRateQueue<T> extends EventEmitter {
     if (!this.paused) return;
     this.paused = false;
 
-    if (this.pendingItems.length > 0 && !this.draining) {
+    if (this.getPendingCount() > 0 && !this.draining) {
       this.drain();
     }
   }
@@ -204,7 +239,7 @@ export class BatchRateQueue<T> extends EventEmitter {
       processed: this.processedCount,
       failed: this.failedCount,
       buffered: this.buffer.length,
-      pending: this.pendingItems.length,
+      pending: this.getPendingCount(),
       running: this.running,
     };
   }
@@ -236,6 +271,31 @@ export class BatchRateQueue<T> extends EventEmitter {
   }
 
   /**
+   * Set a custom rate limit for a specific key (tenant/API key/destination).
+   * Only works when `rateLimitKey` is configured.
+   *
+   * @param key The rate-limit key
+   * @param config The rate limit for this specific key
+   */
+  setKeyRateLimit(key: string, config: RateLimitConfig): void {
+    if (!this.keyedThrottler) {
+      throw new Error('setKeyRateLimit requires rateLimitKey to be configured');
+    }
+    this.keyedThrottler.setKeyRate(key, config);
+  }
+
+  /**
+   * Remove a key's rate bucket (e.g., tenant offboarded).
+   * Only works when `rateLimitKey` is configured.
+   */
+  removeKeyRateLimit(key: string): void {
+    if (!this.keyedThrottler) {
+      throw new Error('removeKeyRateLimit requires rateLimitKey to be configured');
+    }
+    this.keyedThrottler.removeKey(key);
+  }
+
+  /**
    * Update the batch flush configuration at runtime.
    * Takes effect immediately.
    */
@@ -251,6 +311,8 @@ export class BatchRateQueue<T> extends EventEmitter {
     this.running = false;
     this.draining = false;
     this.throttler.destroy();
+    this.keyedThrottler?.destroy();
+    this.scheduler?.clear();
     this.buffer.destroy();
 
     if (this.shutdownCleanup) {
@@ -266,13 +328,61 @@ export class BatchRateQueue<T> extends EventEmitter {
    * Returns a promise that resolves when the 'drain' event fires.
    */
   waitUntilDrained(): Promise<void> {
-    if (this.pendingItems.length === 0 && this.buffer.length === 0 && !this.draining) {
+    if (this.getPendingCount() === 0 && this.buffer.length === 0 && !this.draining) {
       return Promise.resolve();
     }
 
     return new Promise<void>((resolve) => {
       this.once('drain', resolve);
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Get the total number of pending items across all sources.
+   */
+  private getPendingCount(): number {
+    if (this.scheduler) {
+      return this.scheduler.length;
+    }
+    return this.pendingItems.length;
+  }
+
+  /**
+   * Dequeue the next batch of items for processing.
+   * Uses the fair scheduler if enabled, otherwise splices from the FIFO array.
+   *
+   * Returns an array of { key, item } where key is the rate-limit key
+   * (or '__default__' if keyed throttling is not enabled).
+   */
+  private dequeueItems(count: number): Array<{ key: string; item: T }> {
+    if (this.scheduler) {
+      return this.scheduler.dequeueBatch(count);
+    }
+
+    // Standard FIFO dequeue
+    const items = this.pendingItems.splice(0, count);
+    const keyExtractor = this.options.rateLimitKey;
+
+    return items.map(item => ({
+      key: keyExtractor ? keyExtractor(item) : '__default__',
+      item,
+    }));
+  }
+
+  /**
+   * Acquire a rate-limit token for the given key and cost.
+   * Routes to keyed throttler if per-key rate limiting is enabled,
+   * otherwise uses the single shared throttler.
+   */
+  private async acquireToken(key: string, cost: number): Promise<void> {
+    if (this.keyedThrottler && key !== '__default__') {
+      return this.keyedThrottler.acquire(key, cost);
+    }
+    return this.throttler.acquire(cost);
   }
 
   // ---------------------------------------------------------------------------
@@ -288,12 +398,14 @@ export class BatchRateQueue<T> extends EventEmitter {
     this.draining = true;
 
     try {
-      while (this.pendingItems.length > 0 && this.running && !this.paused) {
+      while (this.getPendingCount() > 0 && this.running && !this.paused) {
         // Process items up to concurrency limit
         const concurrency = this.options.concurrency;
-        const batch = this.pendingItems.splice(0, concurrency);
+        const batch = this.dequeueItems(concurrency);
 
-        const promises = batch.map(async (item) => {
+        if (batch.length === 0) break;
+
+        const promises = batch.map(async ({ key, item }) => {
           try {
             // Determine cost for this item
             const cost = this.isCostBased && this.options.costExtractor
@@ -301,11 +413,15 @@ export class BatchRateQueue<T> extends EventEmitter {
               : 1;
 
             // Acquire rate-limit tokens (may block)
-            await this.throttler.acquire(cost);
+            await this.acquireToken(key, cost);
 
             if (!this.running || this.paused) {
               // Re-enqueue the item if stopped or paused during the wait
-              this.pendingItems.unshift(item);
+              if (this.scheduler) {
+                this.scheduler.add(item);
+              } else {
+                this.pendingItems.unshift(item);
+              }
               return;
             }
 
@@ -375,7 +491,7 @@ export class BatchRateQueue<T> extends EventEmitter {
     }
 
     // If we've drained all pending items, flush the buffer and emit drain
-    if (this.pendingItems.length === 0 && this.running) {
+    if (this.getPendingCount() === 0 && this.running) {
       await this.buffer.flushAll();
       this.running = false;
       this.emit('drain');

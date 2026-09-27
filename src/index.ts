@@ -3,6 +3,9 @@ export { BatchRateQueue } from './core/queue';
 export { Throttler } from './core/throttler';
 export { AdaptiveThrottler } from './core/adaptive-throttler';
 export type { WorkerOutcome } from './core/adaptive-throttler';
+export { KeyedThrottler } from './core/keyed-throttler';
+export type { KeyBucketStats } from './core/keyed-throttler';
+export { FairScheduler } from './core/fair-scheduler';
 export { WriteBuffer, isDbConnectionError } from './core/buffer';
 export { setupGracefulShutdown, removeShutdownHandlers } from './core/shutdown';
 

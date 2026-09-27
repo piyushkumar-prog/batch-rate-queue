@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-09-27
+
+### Added
+
+- **Per-Key / Per-Tenant Rate Limiting** (`KeyedThrottler`):
+  - Each unique key (tenant ID, API key, destination) gets its own independent token bucket
+  - Lazy bucket creation — no overhead for keys that haven't been seen yet
+  - `rateLimitKey` option on queue: `(item) => item.tenantId`
+  - `perKeyRateLimit` option: different rate limits per key (e.g., premium vs. free tier)
+  - `queue.setKeyRateLimit(key, config)` — live per-key rate changes without restart
+  - `queue.removeKeyRateLimit(key)` — remove a key's bucket (e.g., tenant offboarded)
+  - Per-key stats via `KeyedThrottler.getAllKeyStats()`
+  - Cost-weighted acquire per key: `keyed.acquire('tenant-a', tokenCount)`
+  - This is the feature BullMQ removed in v3 and made paid-only
+- **Weighted Fair-Share Scheduling** (`FairScheduler`):
+  - Deficit Round Robin (DRR) algorithm prevents tenant starvation
+  - `fairShare: true` option on queue (requires `rateLimitKey`)
+  - A tenant with 10K items no longer blocks a tenant with 10 items
+  - Per-key queue stats: pending count, deficit counter
+  - `dequeueBatch(count)` for concurrent dequeue
+  - Automatic cleanup of empty per-key queues
+- 29 new tests (114 total, all passing)
+
+### Changed
+
+- Queue drain loop now routes through `dequeueItems()` and `acquireToken()` for clean keyed/non-keyed dispatch
+- `pendingItems` array is bypassed when `FairScheduler` is active; `getPendingCount()` abstracts the source
+
 ## [1.1.0] - 2026-09-27
 
 ### Added
