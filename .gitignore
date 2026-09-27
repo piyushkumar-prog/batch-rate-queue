@@ -29,3 +29,6 @@ npm-debug.log*
 
 # TypeScript build info
 *.tsbuildinfo
+
+# Internal planning files
+IMPLEMENTATION_PLAN.md
