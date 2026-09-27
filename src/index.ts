@@ -1,8 +1,19 @@
 // Core
 export { BatchRateQueue } from './core/queue';
 export { Throttler } from './core/throttler';
+export { AdaptiveThrottler } from './core/adaptive-throttler';
+export type { WorkerOutcome } from './core/adaptive-throttler';
 export { WriteBuffer, isDbConnectionError } from './core/buffer';
 export { setupGracefulShutdown, removeShutdownHandlers } from './core/shutdown';
+
+// Error Classifiers
+export {
+  httpRateLimitClassifier,
+  llmApiClassifier,
+  dbConnectionClassifier,
+  composeClassifiers,
+  defaultBufferClassifier,
+} from './core/error-classifier';
 
 // Adapters
 export { createPrismaFlushHandler } from './adapters/prisma';
@@ -17,7 +28,14 @@ export type {
   BufferItem,
   QueueStats,
   WorkerResult,
+  WorkerResultMeta,
   QueueEvents,
+  AdaptiveThrottleConfig,
+  RateChangeEvent,
+  RateChangeReason,
+  ErrorVerdict,
+  ErrorClassification,
+  ErrorClassifier,
 } from './types';
 
 // ---- Convenience factory ----

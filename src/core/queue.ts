@@ -1,6 +1,16 @@
 import { EventEmitter } from 'events';
-import { BatchRateQueueOptions, BufferItem, QueueStats, WorkerResult, QueueEvents } from '../types';
+import {
+  BatchRateQueueOptions,
+  BatchFlushConfig,
+  BufferItem,
+  QueueStats,
+  RateLimitConfig,
+  WorkerResult,
+  QueueEvents,
+  RateChangeEvent,
+} from '../types';
 import { Throttler } from './throttler';
+import { AdaptiveThrottler, WorkerOutcome } from './adaptive-throttler';
 import { WriteBuffer } from './buffer';
 import { setupGracefulShutdown } from './shutdown';
 
@@ -8,10 +18,16 @@ import { setupGracefulShutdown } from './shutdown';
  * BatchRateQueue
  *
  * The main orchestrator that ties together:
- *   - A token-bucket rate limiter (Throttler)
+ *   - A token-bucket rate limiter (Throttler or AdaptiveThrottler)
  *   - An in-memory write buffer (WriteBuffer)
  *   - A self-scheduling drain loop
  *   - Graceful shutdown handling
+ *
+ * v1.1.0 additions:
+ *   - Adaptive throttling (reads live 429s, error rates, Retry-After headers)
+ *   - Cost-weighted rate limiting (for LLM token-based budgets)
+ *   - Runtime-adjustable rate limits (setRateLimit / setBatchFlush)
+ *   - Pluggable error classifiers (httpRateLimitClassifier, llmApiClassifier, etc.)
  *
  * Usage:
  * ```ts
@@ -41,6 +57,8 @@ export class BatchRateQueue<T> extends EventEmitter {
 
   private readonly throttler: Throttler;
   private readonly buffer: WriteBuffer;
+  private readonly isAdaptive: boolean;
+  private readonly isCostBased: boolean;
 
   private pendingItems: T[] = [];
   private processedCount = 0;
@@ -64,8 +82,23 @@ export class BatchRateQueue<T> extends EventEmitter {
       ...options,
     };
 
-    // Initialize rate limiter
-    this.throttler = new Throttler(this.options.rateLimit);
+    this.isCostBased = !!this.options.rateLimit.costBased;
+    this.isAdaptive = !!this.options.adaptiveThrottle?.enabled;
+
+    // Initialize rate limiter (adaptive or standard)
+    if (this.isAdaptive && this.options.adaptiveThrottle) {
+      const adaptiveConfig = {
+        ...this.options.adaptiveThrottle,
+        // Wire the onRateChange callback to also emit an event
+        onRateChange: (event: RateChangeEvent) => {
+          this.options.adaptiveThrottle?.onRateChange?.(event);
+          this.emit('rateLimitChanged', event);
+        },
+      };
+      this.throttler = new AdaptiveThrottler(this.options.rateLimit, adaptiveConfig);
+    } else {
+      this.throttler = new Throttler(this.options.rateLimit);
+    }
 
     // Initialize write buffer
     this.buffer = new WriteBuffer({
@@ -79,6 +112,7 @@ export class BatchRateQueue<T> extends EventEmitter {
       onFlushComplete: (count) => {
         this.emit('flush', count);
       },
+      errorClassifier: this.options.errorClassifier,
     });
 
     // Prevent unhandled 'error' event crashes from EventEmitter.
@@ -176,6 +210,41 @@ export class BatchRateQueue<T> extends EventEmitter {
   }
 
   /**
+   * Update the rate limit configuration at runtime.
+   * Takes effect immediately on the next token refill cycle.
+   * Does NOT require restarting the queue.
+   */
+  setRateLimit(config: Partial<RateLimitConfig>): void {
+    const newRequests = config.requests ?? this.options.rateLimit.requests;
+    const newPerMs = config.perMs ?? this.options.rateLimit.perMs;
+
+    this.throttler.setRate(newRequests, newPerMs);
+
+    // Update stored config
+    this.options.rateLimit.requests = newRequests;
+    this.options.rateLimit.perMs = newPerMs;
+    if (config.costBased !== undefined) {
+      this.options.rateLimit.costBased = config.costBased;
+    }
+
+    this.emit('rateLimitChanged', {
+      previousRate: this.options.rateLimit.requests,
+      newRate: newRequests,
+      reason: 'manual' as const,
+      errorRate: this.isAdaptive ? (this.throttler as AdaptiveThrottler).getErrorRate() : 0,
+    });
+  }
+
+  /**
+   * Update the batch flush configuration at runtime.
+   * Takes effect immediately.
+   */
+  setBatchFlush(config: Partial<BatchFlushConfig>): void {
+    this.buffer.updateConfig(config);
+    Object.assign(this.options.batchFlush, config);
+  }
+
+  /**
    * Destroy the queue, cleaning up all timers and handlers.
    */
   destroy(): void {
@@ -226,8 +295,13 @@ export class BatchRateQueue<T> extends EventEmitter {
 
         const promises = batch.map(async (item) => {
           try {
-            // Acquire a rate-limit token (may block)
-            await this.throttler.acquire();
+            // Determine cost for this item
+            const cost = this.isCostBased && this.options.costExtractor
+              ? this.options.costExtractor(item)
+              : 1;
+
+            // Acquire rate-limit tokens (may block)
+            await this.throttler.acquire(cost);
 
             if (!this.running || this.paused) {
               // Re-enqueue the item if stopped or paused during the wait
@@ -237,6 +311,16 @@ export class BatchRateQueue<T> extends EventEmitter {
 
             // Call the user's worker function
             const result = await this.options.worker(item);
+
+            // Record success for adaptive throttling
+            if (this.isAdaptive) {
+              const outcome: WorkerOutcome = {
+                success: true,
+                statusCode: result?.meta?.statusCode,
+                retryAfterSeconds: result?.meta?.retryAfterSeconds,
+              };
+              (this.throttler as AdaptiveThrottler).recordOutcome(outcome);
+            }
 
             if (result) {
               // Push result into the write buffer
@@ -255,6 +339,30 @@ export class BatchRateQueue<T> extends EventEmitter {
           } catch (error: any) {
             this.failedCount++;
             const err = error instanceof Error ? error : new Error(String(error));
+
+            // Record failure for adaptive throttling
+            if (this.isAdaptive) {
+              const outcome: WorkerOutcome = {
+                success: false,
+                statusCode: error?.status ?? error?.statusCode ?? error?.response?.status,
+                retryAfterSeconds: undefined,
+                error: err,
+              };
+
+              // Extract Retry-After from error if available
+              const retryAfter =
+                error?.headers?.['retry-after'] ??
+                error?.response?.headers?.['retry-after'];
+              if (retryAfter) {
+                const seconds = parseInt(retryAfter, 10);
+                if (!isNaN(seconds) && seconds > 0) {
+                  outcome.retryAfterSeconds = seconds;
+                }
+              }
+
+              (this.throttler as AdaptiveThrottler).recordOutcome(outcome);
+            }
+
             this.options.onError!(err, `worker(${JSON.stringify(item).slice(0, 100)})`);
             this.emit('error', err, 'worker');
           }

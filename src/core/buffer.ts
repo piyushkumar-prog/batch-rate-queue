@@ -1,4 +1,5 @@
-import { BatchFlushConfig, BufferItem } from '../types';
+import { BatchFlushConfig, BufferItem, ErrorClassifier } from '../types';
+import { dbConnectionClassifier } from './error-classifier';
 
 /**
  * Detects whether an error is a transient database connection error.
@@ -7,24 +8,13 @@ import { BatchFlushConfig, BufferItem } from '../types';
  * Covers:
  * - Prisma error codes P1001 (unreachable), P2010 (raw query failure)
  * - Common TCP/connection error messages
+ *
+ * @deprecated Use `dbConnectionClassifier` from `error-classifier.ts` instead.
+ *             Kept for backward compatibility.
  */
 export function isDbConnectionError(error: any): boolean {
-  const code = error?.code;
-  if (code === 'P1001' || code === 'P2010') return true;
-
-  const msg = (error?.message || String(error)).toLowerCase();
-  if (
-    msg.includes('connection timeout') ||
-    msg.includes('connection terminated') ||
-    msg.includes('reach database') ||
-    msg.includes('server has closed the connection') ||
-    msg.includes('econnrefused') ||
-    msg.includes('econnreset')
-  ) {
-    return true;
-  }
-
-  return false;
+  const result = dbConnectionClassifier(error);
+  return result !== null && result.verdict !== 'fail-fast';
 }
 
 /**
@@ -35,9 +25,9 @@ export function isDbConnectionError(error: any): boolean {
  *   1. The buffer reaching the configured `size` threshold.
  *   2. The periodic `intervalMs` timer firing.
  *
- * On transient DB connection errors, items are re-queued with an incremented
- * retry counter and exponential backoff is applied. Items that exceed
- * `maxRetries` are dropped and reported via `onError`.
+ * On transient errors (classified by the error classifier), items are re-queued
+ * with an incremented retry counter and exponential backoff is applied. Items
+ * that exceed `maxRetries` are dropped and reported via `onError`.
  */
 export class WriteBuffer {
   private buffer: BufferItem[] = [];
@@ -45,11 +35,17 @@ export class WriteBuffer {
   private flushing = false;
   private destroyed = false;
 
-  private readonly config: BatchFlushConfig;
+  private config: BatchFlushConfig;
   private readonly maxRetries: number;
   private readonly onFlush: (batch: BufferItem[]) => Promise<void>;
   private readonly onError: (error: Error, context: string) => void;
   private readonly onFlushComplete: (count: number) => void;
+  private readonly errorClassifier: ErrorClassifier;
+
+  /** Total items successfully flushed (for stats/dashboard). */
+  totalFlushed: number = 0;
+  /** Total flush operations that failed. */
+  failedFlushes: number = 0;
 
   constructor(options: {
     config: BatchFlushConfig;
@@ -57,12 +53,14 @@ export class WriteBuffer {
     onFlush: (batch: BufferItem[]) => Promise<void>;
     onError: (error: Error, context: string) => void;
     onFlushComplete?: (count: number) => void;
+    errorClassifier?: ErrorClassifier;
   }) {
     this.config = options.config;
     this.maxRetries = options.maxRetries;
     this.onFlush = options.onFlush;
     this.onError = options.onError;
     this.onFlushComplete = options.onFlushComplete ?? (() => {});
+    this.errorClassifier = options.errorClassifier ?? dbConnectionClassifier;
 
     this.startFlushInterval();
   }
@@ -90,8 +88,21 @@ export class WriteBuffer {
   }
 
   /**
+   * Update the flush configuration at runtime without restarting the buffer.
+   */
+  updateConfig(config: Partial<BatchFlushConfig>): void {
+    if (config.size !== undefined) this.config.size = config.size;
+    if (config.intervalMs !== undefined) {
+      this.config.intervalMs = config.intervalMs;
+      // Restart the flush interval with new timing
+      this.stopFlushInterval();
+      this.startFlushInterval();
+    }
+  }
+
+  /**
    * Flush up to `config.size` items from the buffer to the database.
-   * Handles transient errors with retry and exponential backoff.
+   * Uses the error classifier to determine retry/fail behavior.
    */
   async flush(): Promise<void> {
     if (this.buffer.length === 0 || this.flushing) return;
@@ -104,10 +115,16 @@ export class WriteBuffer {
 
       try {
         await this.onFlush(batch);
+        this.totalFlushed += batch.length;
         this.onFlushComplete(batch.length);
       } catch (error: any) {
-        if (isDbConnectionError(error)) {
-          // Re-queue items that haven't exceeded max retries
+        this.failedFlushes++;
+
+        // Classify the error using the pluggable classifier
+        const classification = this.errorClassifier(error);
+
+        if (classification && (classification.verdict === 'retry-backoff' || classification.verdict === 'retry-after')) {
+          // Transient error — re-queue items that haven't exceeded max retries
           const retryable: BufferItem[] = [];
           const dropped: BufferItem[] = [];
 
@@ -128,17 +145,24 @@ export class WriteBuffer {
           // Report dropped items
           for (const item of dropped) {
             this.onError(
-              new Error(`Buffer item ${item.id} dropped after ${this.maxRetries} retries`),
+              new Error(`Buffer item ${item.id} dropped after ${this.maxRetries} retries (${classification.reason})`),
               'buffer.flush.maxRetries'
             );
           }
 
-          // Exponential backoff: 2^retries * 1000ms, capped at 30s
-          const maxRetryInBatch = Math.max(...batch.map((i) => i.retries), 1);
-          const backoffMs = Math.min(Math.pow(2, maxRetryInBatch) * 1000, 30000);
+          // Determine backoff duration
+          let backoffMs: number;
+          if (classification.verdict === 'retry-after' && classification.retryAfterMs) {
+            backoffMs = classification.retryAfterMs;
+          } else {
+            // Exponential backoff: 2^retries * 1000ms, capped at 30s
+            const maxRetryInBatch = Math.max(...batch.map((i) => i.retries), 1);
+            backoffMs = Math.min(Math.pow(2, maxRetryInBatch) * 1000, 30000);
+          }
+
           await this.sleep(backoffMs);
         } else {
-          // Non-transient error — report and drop the batch
+          // Non-transient or unrecognized error — report and drop the batch
           this.onError(error instanceof Error ? error : new Error(String(error)), 'buffer.flush');
         }
       }
@@ -162,10 +186,7 @@ export class WriteBuffer {
    */
   destroy(): void {
     this.destroyed = true;
-    if (this.flushTimer) {
-      clearInterval(this.flushTimer);
-      this.flushTimer = null;
-    }
+    this.stopFlushInterval();
   }
 
   /**
@@ -181,6 +202,16 @@ export class WriteBuffer {
     // Unref so the timer doesn't prevent Node from exiting
     if (this.flushTimer && typeof this.flushTimer === 'object' && 'unref' in this.flushTimer) {
       this.flushTimer.unref();
+    }
+  }
+
+  /**
+   * Stop the flush interval timer.
+   */
+  private stopFlushInterval(): void {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = null;
     }
   }
 

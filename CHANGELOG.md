@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-09-27
+
+### Added
+
+- **Reactive / Adaptive Throttling** (`AdaptiveThrottler`):
+  - Reads live signals (429s, Retry-After headers, rising error rates) from worker outcomes
+  - Automatically reduces throughput when downstream APIs are struggling
+  - Gradually recovers when error rate drops (with hysteresis to prevent oscillation)
+  - Honors `Retry-After` headers by pausing the throttler for the specified duration
+  - Configurable `backoffFactor`, `recoveryFactor`, `errorRateThreshold`, `minRate`
+  - `onRateChange` callback + `rateLimitChanged` event for monitoring
+- **Cost-Weighted Rate Limiting**:
+  - `acquire(cost)` consumes variable tokens per job (e.g., LLM token counts)
+  - `rateLimit.costBased: true` enables token-budget mode
+  - `costExtractor` option to estimate cost before worker runs
+  - Backward compatible: `acquire()` with no args still costs 1
+- **Runtime-Adjustable Limits**:
+  - `queue.setRateLimit({ requests, perMs })` — live rate changes without restart
+  - `queue.setBatchFlush({ size, intervalMs })` — live buffer config changes
+  - `throttler.setRate(requests, perMs)` — reconfigures the token bucket in-place
+- **Pluggable Error Classifiers**:
+  - `ErrorClassifier` type: inspect errors → `retry-backoff` / `retry-after` / `fail-fast` / `ignore`
+  - `httpRateLimitClassifier` — HTTP 429/502/503/504 with Retry-After parsing
+  - `llmApiClassifier` — OpenAI / Anthropic error patterns (rate limits, overloaded, invalid keys)
+  - `dbConnectionClassifier` — Prisma, PostgreSQL deadlocks, TCP connection errors
+  - `composeClassifiers()` — combine multiple classifiers into a pipeline
+  - `errorClassifier` option on queue replaces hardcoded `isDbConnectionError` in write buffer
+- **WorkerResult.meta** — optional metadata (statusCode, retryAfterSeconds, actualCost, headers) for adaptive throttling signals
+- **WriteBuffer stats** — `totalFlushed` and `failedFlushes` counters for monitoring
+- 54 new tests (85 total, all passing)
+
+### Changed
+
+- `Throttler` class members changed from `private` to `protected` for `AdaptiveThrottler` extension
+- `WriteBuffer` now accepts an optional `errorClassifier` (defaults to `dbConnectionClassifier` for backward compat)
+- `isDbConnectionError()` is now a thin wrapper over `dbConnectionClassifier` (deprecated but still exported)
+
 ## [1.0.0] - 2026-09-27
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "batch-rate-queue",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Zero-Redis resilient background worker with batch SQL write-buffering and token-bucket rate limiting",
   "author": "Piyush Kumar",
   "license": "MIT",
