@@ -58,12 +58,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_USERNAME/batch-rate-queue.git"
+    "url": "https://github.com/piyushkumar-prog/batch-rate-queue.git"
   },
   "bugs": {
-    "url": "https://github.com/YOUR_USERNAME/batch-rate-queue/issues"
+    "url": "https://github.com/piyushkumar-prog/batch-rate-queue/issues"
   },
-  "homepage": "https://github.com/YOUR_USERNAME/batch-rate-queue#readme",
+  "homepage": "https://github.com/piyushkumar-prog/batch-rate-queue#readme",
   "engines": {
     "node": ">=16.0.0"
   },
