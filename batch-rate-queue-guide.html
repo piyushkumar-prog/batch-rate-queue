@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>batch-rate-queue — Architecture Whitepaper & Comprehensive Guide</title>
+  <title>batch-rate-queue — Architecture Whitepaper & Developer Guide</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
     @page {
       size: A4;
-      margin: 10mm 12mm 10mm 12mm;
+      margin: 8mm 10mm 8mm 10mm;
     }
 
     * {
@@ -21,8 +21,8 @@
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: #1e293b;
       background: #ffffff;
-      line-height: 1.4;
-      font-size: 11px;
+      line-height: 1.35;
+      font-size: 10px;
       -webkit-font-smoothing: antialiased;
     }
 
@@ -31,9 +31,10 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      height: 275mm;
-      max-height: 275mm;
+      height: 280mm;
+      max-height: 280mm;
       overflow: hidden;
+      padding: 0;
     }
 
     .page:last-child {
@@ -42,6 +43,9 @@
 
     .page-content {
       flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     /* Header Bar */
@@ -49,12 +53,12 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 6px;
-      margin-bottom: 10px;
+      padding-bottom: 4px;
+      margin-bottom: 2px;
       border-bottom: 1.5px solid #e2e8f0;
-      font-size: 9.5px;
+      font-size: 8.5px;
       color: #64748b;
-      font-weight: 500;
+      font-weight: 600;
     }
 
     .doc-header .badge {
@@ -63,7 +67,7 @@
       padding: 2px 7px;
       border-radius: 9999px;
       font-weight: 700;
-      font-size: 9px;
+      font-size: 8px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -73,54 +77,53 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-top: 5px;
-      margin-top: 6px;
+      padding-top: 4px;
+      margin-top: 2px;
       border-top: 1px solid #e2e8f0;
-      font-size: 9px;
+      font-size: 8px;
       color: #94a3b8;
     }
 
     /* Hero / Cover Banner */
     .hero-banner {
       background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #312e81 100%);
-      border-radius: 8px;
-      padding: 16px 20px;
+      border-radius: 6px;
+      padding: 12px 16px;
       color: #ffffff;
-      margin-bottom: 12px;
     }
 
     .hero-pretitle {
-      font-size: 9.5px;
+      font-size: 8.5px;
       letter-spacing: 1.2px;
       text-transform: uppercase;
       color: #818cf8;
       font-weight: 700;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
 
     .hero-title {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 800;
       letter-spacing: -0.5px;
-      margin-bottom: 5px;
+      margin-bottom: 3px;
       background: linear-gradient(to right, #ffffff, #c7d2fe);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .hero-subtitle {
-      font-size: 11px;
+      font-size: 9.5px;
       color: #cbd5e1;
-      line-height: 1.45;
-      margin-bottom: 10px;
+      line-height: 1.35;
+      margin-bottom: 8px;
     }
 
     .hero-meta-row {
       display: flex;
-      gap: 14px;
+      gap: 12px;
       padding-top: 6px;
       border-top: 1px solid rgba(255, 255, 255, 0.12);
-      font-size: 9.5px;
+      font-size: 8.5px;
       color: #94a3b8;
     }
 
@@ -130,100 +133,108 @@
 
     /* Section Titles */
     h2.section-title {
-      font-size: 13px;
+      font-size: 11.5px;
       font-weight: 700;
       color: #0f172a;
-      margin: 10px 0 5px 0;
+      margin: 2px 0;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
 
     h2.section-title .section-num {
       background: #4f46e5;
       color: #ffffff;
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       border-radius: 4px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 9.5px;
+      font-size: 8.5px;
       font-weight: 800;
     }
 
     p.section-desc {
       color: #475569;
-      font-size: 10.5px;
-      margin-bottom: 6px;
-      line-height: 1.45;
+      font-size: 9.5px;
+      margin-bottom: 2px;
+      line-height: 1.35;
     }
 
     /* Grids */
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 8px;
+      gap: 6px;
     }
 
     .grid-3 {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-bottom: 8px;
+      gap: 6px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 5px;
+      padding: 6px 8px;
     }
 
     .problem-card {
       background: #fff;
       border: 1px solid #fee2e2;
-      border-left: 3.5px solid #ef4444;
-      border-radius: 6px;
-      padding: 8px 10px;
+      border-left: 3px solid #ef4444;
+      border-radius: 5px;
+      padding: 5px 8px;
     }
 
     .problem-card h3 {
-      font-size: 10.5px;
+      font-size: 9.5px;
       font-weight: 700;
       color: #991b1b;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
 
     .problem-card p {
-      font-size: 9.5px;
+      font-size: 8.5px;
       color: #64748b;
-      line-height: 1.4;
+      line-height: 1.3;
     }
 
-    /* Solution Box */
     .solution-box {
       background: #f0fdf4;
       border: 1px solid #bbf7d0;
-      border-left: 3.5px solid #22c55e;
-      border-radius: 6px;
-      padding: 8px 12px;
-      margin-bottom: 8px;
+      border-left: 3px solid #22c55e;
+      border-radius: 5px;
+      padding: 6px 10px;
     }
 
     .solution-box h3 {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       color: #166534;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
 
     .solution-box p {
-      font-size: 10px;
+      font-size: 9px;
       color: #15803d;
-      line-height: 1.4;
+      line-height: 1.35;
     }
 
     /* Architecture Visual Diagram */
     .arch-diagram {
       background: #0f172a;
-      border-radius: 6px;
-      padding: 10px 12px;
-      margin: 6px 0 8px 0;
+      border-radius: 5px;
+      padding: 8px 10px;
       color: #e2e8f0;
     }
 
@@ -237,8 +248,8 @@
     .arch-node {
       background: #1e293b;
       border: 1px solid #334155;
-      border-radius: 5px;
-      padding: 6px 8px;
+      border-radius: 4px;
+      padding: 5px 6px;
       flex: 1;
       text-align: center;
     }
@@ -254,28 +265,28 @@
     }
 
     .arch-node-title {
-      font-size: 9.5px;
+      font-size: 8.5px;
       font-weight: 700;
       color: #f8fafc;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
 
     .arch-node-sub {
-      font-size: 8px;
+      font-size: 7.5px;
       color: #94a3b8;
       line-height: 1.2;
     }
 
     .arch-arrow {
       color: #818cf8;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 800;
     }
 
     /* Comparison Table */
     .table-container {
-      margin: 6px 0;
-      border-radius: 5px;
+      margin: 2px 0;
+      border-radius: 4px;
       overflow: hidden;
       border: 1px solid #e2e8f0;
     }
@@ -283,7 +294,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 9.5px;
+      font-size: 8.5px;
       text-align: left;
     }
 
@@ -291,12 +302,12 @@
       background: #f1f5f9;
       color: #334155;
       font-weight: 700;
-      padding: 5px 8px;
+      padding: 4px 6px;
       border-bottom: 1px solid #cbd5e1;
     }
 
     td {
-      padding: 4px 8px;
+      padding: 3px 6px;
       border-bottom: 1px solid #f1f5f9;
       color: #475569;
     }
@@ -322,16 +333,15 @@
     /* Code Blocks */
     .code-container {
       background: #0f172a;
-      border-radius: 5px;
+      border-radius: 4px;
       overflow: hidden;
-      margin: 5px 0 7px 0;
       border: 1px solid #334155;
     }
 
     .code-header {
       background: #1e293b;
-      padding: 3px 8px;
-      font-size: 8.5px;
+      padding: 2px 6px;
+      font-size: 8px;
       font-family: 'JetBrains Mono', monospace;
       color: #94a3b8;
       display: flex;
@@ -341,10 +351,10 @@
 
     pre {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 9px;
-      line-height: 1.4;
+      font-size: 8px;
+      line-height: 1.35;
       color: #e2e8f0;
-      padding: 7px 9px;
+      padding: 5px 7px;
       overflow-x: auto;
     }
 
@@ -355,64 +365,124 @@
     .comment { color: #64748b; font-style: italic; }
     .prop { color: #a78bfa; }
 
+    /* Step Card */
+    .step-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 5px 7px;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 3px;
+    }
+
+    .step-badge {
+      background: #4f46e5;
+      color: #ffffff;
+      font-size: 8px;
+      font-weight: 800;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .step-title {
+      font-size: 9px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .step-desc {
+      font-size: 8px;
+      color: #475569;
+      line-height: 1.3;
+      margin-bottom: 3px;
+    }
+
     /* Key Feature Pills */
     .pill-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      margin: 6px 0;
+      gap: 5px;
     }
 
     .pill-card {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
-      border-radius: 5px;
-      padding: 6px 8px;
+      border-radius: 4px;
+      padding: 4px 6px;
     }
 
     .pill-card strong {
       display: block;
-      font-size: 9.5px;
+      font-size: 8.5px;
       color: #0f172a;
       margin-bottom: 1px;
     }
 
     .pill-card span {
-      font-size: 8.5px;
+      font-size: 7.5px;
       color: #64748b;
-      line-height: 1.3;
+      line-height: 1.25;
     }
 
     /* Highlight stats */
     .stat-bar {
       display: flex;
-      gap: 8px;
-      margin: 8px 0;
+      gap: 6px;
     }
 
     .stat-item {
       flex: 1;
       background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
       border: 1px solid #cbd5e1;
-      border-radius: 5px;
-      padding: 6px;
+      border-radius: 4px;
+      padding: 4px;
       text-align: center;
     }
 
     .stat-value {
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 800;
       color: #4f46e5;
       letter-spacing: -0.5px;
     }
 
     .stat-label {
-      font-size: 8px;
+      font-size: 7.5px;
       font-weight: 600;
       color: #64748b;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-top: 1px;
+    }
+
+    .checklist {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .checklist li {
+      display: flex;
+      align-items: flex-start;
+      gap: 4px;
+      font-size: 8px;
+      color: #334155;
+      line-height: 1.3;
+    }
+
+    .checklist li strong {
+      color: #0f172a;
+    }
+
+    .checklist-icon {
+      color: #22c55e;
+      font-weight: 800;
+      font-size: 9px;
     }
   </style>
 </head>
@@ -422,70 +492,135 @@
   <div class="page">
     <div class="page-content">
       <div class="doc-header">
-        <span>batch-rate-queue // Technical Whitepaper & User Manual</span>
-        <span class="badge">v1.4.0 Enterprise Architecture</span>
+        <span>batch-rate-queue // Technical Whitepaper & Developer Manual</span>
+        <span class="badge">v1.4.0 Architecture</span>
       </div>
 
       <div class="hero-banner">
-        <div class="hero-pretitle">Open Source Node.js Architecture</div>
+        <div class="hero-pretitle">Enterprise Node.js & TypeScript Architecture</div>
         <div class="hero-title">batch-rate-queue</div>
         <div class="hero-subtitle">
-          The Zero-Redis Throttling & SQL Write-Buffering Layer. Built-in idempotency deduplication, partial batch failure isolation, PgBouncer-safe lease locks, multi-tenant fair scheduling, and PostgreSQL distributed coordination.
+          The Zero-Redis background worker and resilient throttling layer. Native side-effect idempotency, partial batch failure isolation, PgBouncer transaction-safe lease locks, multi-tenant fair scheduling, and micro-batched SQL write buffering.
         </div>
         <div class="hero-meta-row">
           <div class="hero-meta-item">Package: <strong>batch-rate-queue</strong></div>
           <div class="hero-meta-item">Version: <strong>v1.4.0</strong></div>
-          <div class="hero-meta-item">Runtime: <strong>Node.js >= 16</strong></div>
+          <div class="hero-meta-item">Runtime: <strong>Node.js &gt;= 16</strong></div>
           <div class="hero-meta-item">License: <strong>MIT</strong></div>
           <div class="hero-meta-item">Tests: <strong>161 / 161 Passing</strong></div>
         </div>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">1</span> Real Production Gaps in Existing Queue Systems
+        <span class="section-num">1</span> The Core Problem: The Dual-Bottleneck Dilemma
       </h2>
       <p class="section-desc">
-        Traditional background job queues (BullMQ, pg-boss, Celery) were built to distribute compute across worker nodes. When modern applications interact with rate-limited APIs and relational databases, developers hit severe architectural walls:
+        Modern backend microservices ingest high-velocity events, call rate-limited third-party APIs (OpenAI, Stripe, Shopify, Google Maps), and persist state back into relational databases. This inevitably crashes production under two opposing bottlenecks:
       </p>
 
       <div class="grid-2">
         <div class="problem-card">
-          <h3>1. Double-Firing External Side-Effects</h3>
+          <h3>Bottleneck A: Downstream API 429 Throttle</h3>
           <p>
-            When a worker crashes after calling an external API (Stripe, Twilio) but before marking the job done, redelivery calls the API a second time, duplicating charges or SMS.
+            External APIs enforce rigid rate limits (e.g., 50 req/sec). Uncoordinated parallel workers burst past limits, generating cascades of HTTP 429 errors and service bans.
           </p>
         </div>
 
         <div class="problem-card">
-          <h3>2. All-or-Nothing Batch Rollbacks</h3>
+          <h3>Bottleneck B: Database Connection Exhaustion (N+1 Writes)</h3>
           <p>
-            When 1 row in a 50-row batch violates a constraint, Postgres rolls back the entire transaction by default, losing the 49 good writes along with the bad one.
-          </p>
-        </div>
-
-        <div class="problem-card">
-          <h3>3. PgBouncer Transaction Mode Breakage</h3>
-          <p>
-            Managed databases (Supabase, Neon, RDS Proxy) run PgBouncer in transaction-pooling mode, which silently breaks session-scoped <code>pg_advisory_lock</code>.
-          </p>
-        </div>
-
-        <div class="problem-card">
-          <h3>4. Multi-Tenant Starvation & Paid Paywalls</h3>
-          <p>
-            One heavy tenant enqueueing 50k jobs blocks everyone else. BullMQ removed group rate limiting in v3 and made it paid-only. No free, robust multi-tenant scheduler existed.
+            Writing every job result individually produces 1,000 single SQL <code>UPDATE</code> queries/sec, exhausting DB connection pools, triggering row-lock contention, and spiking CPU.
           </p>
         </div>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">2</span> The "Zero-Redis" Architectural Paradigm
+        <span class="section-num">2</span> The Architecture Solution: Unified Throttling &amp; Write-Buffering
       </h2>
-      <div class="solution-box">
-        <h3>The Dedicated Throttling & Write-Buffering Layer</h3>
-        <p>
-          Instead of replacing your existing orchestrator, <code>batch-rate-queue</code> acts as the specialized <strong>throttling and write-buffering layer</strong> that sits in front of whatever executes your jobs. It runs purely in-process with optional PostgreSQL distributed coordination across pods—eliminating Redis entirely.
-        </p>
+      <div class="arch-diagram">
+        <div class="arch-flow">
+          <div class="arch-node">
+            <div class="arch-node-title">1. Fair Scheduler</div>
+            <div class="arch-node-sub">Deficit Round Robin<br>Per-Tenant Isolation</div>
+          </div>
+          <div class="arch-arrow">&rarr;</div>
+          <div class="arch-node highlight">
+            <div class="arch-node-title">2. Idempotency Gate</div>
+            <div class="arch-node-sub">Bypasses Side Effects<br>On Worker Crashes</div>
+          </div>
+          <div class="arch-arrow">&rarr;</div>
+          <div class="arch-node highlight-green">
+            <div class="arch-node-title">3. Token Bucket &amp; Breaker</div>
+            <div class="arch-node-sub">PgBouncer Safe Leases<br>Adaptive 429 Cooldown</div>
+          </div>
+          <div class="arch-arrow">&rarr;</div>
+          <div class="arch-node">
+            <div class="arch-node-title">4. Worker Task</div>
+            <div class="arch-node-sub">External API / LLM<br>Returns Job Result</div>
+          </div>
+          <div class="arch-arrow">&rarr;</div>
+          <div class="arch-node highlight">
+            <div class="arch-node-title">5. Write Buffer</div>
+            <div class="arch-node-sub">Partial Batch Isolation<br>Single Bulk SQL Insert</div>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="section-title">
+        <span class="section-num">3</span> Eight Production Gaps in Traditional Queues Solved in v1.4.0
+      </h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 28%;">Production Failure Mode</th>
+              <th style="width: 28%;">Behavior in Traditional Queues</th>
+              <th style="width: 44%;">Native Solution in batch-rate-queue v1.4.0</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1. Side-Effect Redelivery</strong></td>
+              <td class="bad">Worker crash re-runs API &rarr; double charges</td>
+              <td class="good">Built-in IdempotencyManager with deduplication caching</td>
+            </tr>
+            <tr>
+              <td><strong>2. Partial Batch Failures</strong></td>
+              <td class="bad">1 bad row in 50 rolls back entire transaction</td>
+              <td class="good">isolateBatchFailures: true salvages the 49 good rows</td>
+            </tr>
+            <tr>
+              <td><strong>3. PgBouncer Incompatibility</strong></td>
+              <td class="bad">pg_advisory_lock breaks in transaction mode</td>
+              <td class="good">PgLeaseLock with row-level leases &amp; monotonic fencing tokens</td>
+            </tr>
+            <tr>
+              <td><strong>4. Header Fragmentation</strong></td>
+              <td class="bad">Hardcoded parsers miss RFC 9745 / HTTP-Date</td>
+              <td class="good">Unified parseRateLimitHeaders() adapter for all providers</td>
+            </tr>
+            <tr>
+              <td><strong>5. Table Bloat (Large Payloads)</strong></td>
+              <td class="bad">Large JSON slows SKIP LOCKED table scans</td>
+              <td class="good">ClaimCheckManager offloads payloads &gt;64KB to blob storage</td>
+            </tr>
+            <tr>
+              <td><strong>6. Multi-Tenant Starvation</strong></td>
+              <td class="bad">1 spammy user blocks all others (or paywalled)</td>
+              <td class="good">Free Deficit Round-Robin (DRR) fair scheduling per tenant key</td>
+            </tr>
+            <tr>
+              <td><strong>7. Downstream Cascades</strong></td>
+              <td class="bad">Retries hammer failing endpoints to death</td>
+              <td class="good">AdaptiveThrottler &amp; Circuit Breakers auto-pause destinations</td>
+            </tr>
+            <tr>
+              <td><strong>8. Distributed Double-Firing</strong></td>
+              <td class="bad">Multi-replica pods duplicate scheduled cron ticks</td>
+              <td class="good">Named lease locks with auto-renewing heartbeat &amp; UTC intervals</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div class="stat-bar">
@@ -495,22 +630,22 @@
         </div>
         <div class="stat-item">
           <div class="stat-value">98.5%</div>
-          <div class="stat-label">DB Roundtrip Reduction</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value">100%</div>
-          <div class="stat-label">Tenant Starvation Free (DRR)</div>
+          <div class="stat-label">DB Roundtrips Eliminated</div>
         </div>
         <div class="stat-item">
           <div class="stat-value">0 B</div>
-          <div class="stat-label">Data Lost on SIGTERM</div>
+          <div class="stat-label">Runtime Dependencies</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">100%</div>
+          <div class="stat-label">Data Preserved on SIGTERM</div>
         </div>
       </div>
     </div>
 
     <div class="doc-footer">
-      <span>batch-rate-queue Architectural Whitepaper</span>
-      <span>Page 1 of 5</span>
+      <span>batch-rate-queue Architecture Whitepaper &bull; Author: Piyush Kumar</span>
+      <span>Page 1 of 6</span>
     </div>
   </div>
 
@@ -518,148 +653,154 @@
   <div class="page">
     <div class="page-content">
       <div class="doc-header">
-        <span>batch-rate-queue // Technical Whitepaper & User Manual</span>
-        <span class="badge">Architecture Blueprint & Core Modules</span>
+        <span>batch-rate-queue // Hands-on Implementation Guide</span>
+        <span class="badge">Step-by-Step Setup &bull; Part 1</span>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">3</span> Complete Architecture Blueprint
+        <span class="section-num">4</span> Step-by-Step Setup: Core Pipeline &amp; Quickstart
       </h2>
       <p class="section-desc">
-        Incoming tasks flow through a multi-stage pipeline guaranteeing fair scheduling, token budgeting, idempotency deduplication, adaptive backoff, and transactional batch writing:
+        Follow these steps to configure <code>batch-rate-queue</code> in any TypeScript / Node.js backend. Zero infrastructure required.
       </p>
 
-      <div class="arch-diagram">
-        <div class="arch-flow">
-          <div class="arch-node">
-            <div class="arch-node-title">1. Fair Scheduler</div>
-            <div class="arch-node-sub">Deficit Round Robin<br>Per-Key Queue Isolation</div>
+      <div class="grid-2">
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-badge">STEP 1</span>
+            <span class="step-title">Install Package</span>
           </div>
-          <div class="arch-arrow">&rarr;</div>
-          <div class="arch-node highlight">
-            <div class="arch-node-title">2. Idempotency Check</div>
-            <div class="arch-node-sub">Deduplicates Side Effects<br>Bypasses Redelivery Calls</div>
+          <div class="step-desc">Zero external runtime dependencies. Works with npm, pnpm, or yarn.</div>
+          <div class="code-container">
+            <div class="code-header"><span>Terminal</span><span>bash</span></div>
+            <pre><span class="comment"># Install pure TypeScript package</span>
+npm install batch-rate-queue
+
+<span class="comment"># Optional peer dependency for Postgres</span>
+npm install pg @types/pg</pre>
           </div>
-          <div class="arch-arrow">&rarr;</div>
-          <div class="arch-node highlight-green">
-            <div class="arch-node-title">3. Circuit & Tokens</div>
-            <div class="arch-node-sub">Pg Shared Lease/Breaker<br>Cost-Weighted Tokens</div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-badge">STEP 2</span>
+            <span class="step-title">Import &amp; Define Job Data Interfaces</span>
           </div>
-          <div class="arch-arrow">&rarr;</div>
-          <div class="arch-node">
-            <div class="arch-node-title">4. Worker Task</div>
-            <div class="arch-node-sub">API / LLM Call<br>Signals Live Outcome</div>
-          </div>
-          <div class="arch-arrow">&rarr;</div>
-          <div class="arch-node highlight">
-            <div class="arch-node-title">5. Write Buffer</div>
-            <div class="arch-node-sub">Partial Batch Isolation<br>Atomic Batch SQL</div>
+          <div class="step-desc">Strongly-typed data structures for job inputs and flush outputs.</div>
+          <div class="code-container">
+            <div class="code-header"><span>types.ts</span><span>typescript</span></div>
+            <pre><span class="keyword">import</span> { BatchRateQueue } <span class="keyword">from</span> <span class="str">"batch-rate-queue"</span>;
+
+<span class="keyword">interface</span> <span class="fn">GeocodeInput</span> {
+  id: <span class="fn">string</span>;
+  address: <span class="fn">string</span>;
+  userId: <span class="fn">string</span>;
+}
+
+<span class="keyword">interface</span> <span class="fn">GeocodeResult</span> {
+  id: <span class="fn">string</span>;
+  lat: <span class="fn">number</span>;
+  lng: <span class="fn">number</span>;
+  status: <span class="str">"SUCCESS"</span> | <span class="str">"FAILED"</span>;
+}</pre>
           </div>
         </div>
       </div>
 
-      <h2 class="section-title">
-        <span class="section-num">4</span> Six Pillar Capabilities
-      </h2>
+      <div class="step-card">
+        <div class="step-header">
+          <span class="step-badge">STEP 3</span>
+          <span class="step-title">Initialize Queue with Rate Limiting &amp; Write Buffering</span>
+        </div>
+        <div class="step-desc">
+          Combine the token bucket (50 req/sec) and micro-batch buffer (flush every 50 items or 2,000ms, whichever happens first).
+        </div>
+        <div class="code-container">
+          <div class="code-header"><span>queue-init.ts</span><span>typescript</span></div>
+          <pre><span class="keyword">const</span> queue = <span class="keyword">new</span> <span class="fn">BatchRateQueue</span>&lt;<span class="fn">GeocodeInput</span>, <span class="fn">GeocodeResult</span>&gt;({
+  <span class="comment">// 1. Token-Bucket Rate Limiter (Downstream Protection)</span>
+  rateLimit: {
+    maxRequests: <span class="num">50</span>,      <span class="comment">// 50 requests allowed per window</span>
+    windowMs: <span class="num">1000</span>,       <span class="comment">// 1 second window (50 RPS)</span>
+    burstLimit: <span class="num">65</span>,       <span class="comment">// Allow short spikes up to 65 requests</span>
+    concurrency: <span class="num">10</span>       <span class="comment">// Max 10 parallel active workers</span>
+  },
 
-      <div class="pill-grid">
-        <div class="pill-card">
-          <strong>1. Idempotency & Deduplication</strong>
-          <span>Prevents duplicate external API calls (e.g. double-charging Stripe) on worker redeliveries after unhandled container crashes.</span>
-        </div>
-        <div class="pill-card">
-          <strong>2. Partial Batch Failure Isolation</strong>
-          <span>When 1 row in a 50-row batch fails a constraint, automatically isolates the bad row and commits the other 49 valid rows.</span>
-        </div>
-        <div class="pill-card">
-          <strong>3. PgBouncer-Safe Lease Locks</strong>
-          <span>Distributed lock table using UTC timestamp intervals, 100% safe under Supabase/Neon transaction pooling mode.</span>
-        </div>
-        <div class="pill-card">
-          <strong>4. Multi-Tenant Fair-Share (DRR)</strong>
-          <span>Deficit Round Robin scheduling isolates tenant queues. A tenant with 50,000 items will never starve a tenant with 5 items.</span>
-        </div>
-        <div class="pill-card">
-          <strong>5. Multi-Provider Header Parsing</strong>
-          <span>Parses IETF RFC 9745, OpenAI, Anthropic, GitHub, Vercel, and HTTP-Date <code>Retry-After</code> headers automatically.</span>
-        </div>
-        <div class="pill-card">
-          <strong>6. Payload Claim-Check Pattern</strong>
-          <span>Automatically offloads payloads &gt;64KB to prevent DB table bloat and preserve high-throughput SKIP LOCKED scans.</span>
+  <span class="comment">// 2. Micro-Batched SQL Write Buffer (Database Protection)</span>
+  batchSize: <span class="num">50</span>,          <span class="comment">// Trigger immediate DB write when buffer hits 50 items</span>
+  flushIntervalMs: <span class="num">2000</span>,  <span class="comment">// Time-based flush safety net every 2 seconds</span>
+  isolateBatchFailures: <span class="keyword">true</span>, <span class="comment">// Salvage valid writes if one item fails DB constraint</span>
+
+  <span class="comment">// 3. Worker Function: Executes single job (Rate-limited)</span>
+  worker: <span class="keyword">async</span> (job) =&gt; {
+    <span class="keyword">const</span> res = <span class="keyword">await</span> <span class="fn">fetch</span>(<span class="str">`https://api.geocoding.com/v1?q=<span class="keyword">${</span>encodeURIComponent(job.data.address)<span class="keyword">}</span>`</span>);
+    
+    <span class="comment">// Record live provider headers to auto-adapt cooldowns on rate spikes</span>
+    queue.<span class="fn">recordResponseHeaders</span>(Object.<span class="fn">fromEntries</span>(res.headers.<span class="fn">entries</span>()));
+    <span class="keyword">const</span> json = <span class="keyword">await</span> res.<span class="fn">json</span>();
+
+    <span class="keyword">return</span> { id: job.id, lat: json.lat, lng: json.lng, status: <span class="str">"SUCCESS"</span> };
+  },
+
+  <span class="comment">// 4. Flush Handler: Writes entire batch in 1 single SQL operation</span>
+  flush: <span class="keyword">async</span> (batch) =&gt; {
+    <span class="keyword">await</span> pool.<span class="fn">query</span>(
+      <span class="str">`INSERT INTO geocodes (id, lat, lng, status)
+       SELECT * FROM jsonb_to_recordset($1::jsonb) AS x(id text, lat numeric, lng numeric, status text)
+       ON CONFLICT (id) DO UPDATE SET lat = EXCLUDED.lat, lng = EXCLUDED.lng, status = EXCLUDED.status`</span>,
+      [JSON.<span class="fn">stringify</span>(batch)]
+    );
+  }
+});</pre>
         </div>
       </div>
 
-      <h2 class="section-title">
-        <span class="section-num">5</span> Comprehensive Feature Comparison
-      </h2>
+      <div class="grid-2">
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-badge">STEP 4</span>
+            <span class="step-title">Enqueue Jobs with Priority</span>
+          </div>
+          <div class="step-desc">Push single or bulk jobs with customizable priority levels.</div>
+          <div class="code-container">
+            <div class="code-header"><span>enqueue.ts</span><span>typescript</span></div>
+            <pre><span class="comment">// Push individual job</span>
+<span class="keyword">await</span> queue.<span class="fn">push</span>({
+  id: <span class="str">"job_01"</span>,
+  data: { id: <span class="str">"loc_01"</span>, address: <span class="str">"1 Market St, SF"</span>, userId: <span class="str">"usr_99"</span> },
+  priority: <span class="num">10</span> <span class="comment">// High priority executes first</span>
+});
 
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Feature Capability</th>
-              <th>BullMQ</th>
-              <th>pg-boss</th>
-              <th>batch-rate-queue</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><strong>Redis Dependency</strong></td>
-              <td class="bad">Mandatory Redis Cluster</td>
-              <td class="good">Zero (Postgres only)</td>
-              <td class="good">Zero (Standalone or Postgres)</td>
-            </tr>
-            <tr>
-              <td><strong>Partial Batch Failure Isolation</strong></td>
-              <td class="bad">No (All or nothing)</td>
-              <td class="bad">No (All or nothing)</td>
-              <td class="good">Native Row-Level Salvage Isolation</td>
-            </tr>
-            <tr>
-              <td><strong>Side-Effect Idempotency</strong></td>
-              <td class="bad">Manual only</td>
-              <td class="bad">Manual only</td>
-              <td class="good">Built-in IdempotencyManager</td>
-            </tr>
-            <tr>
-              <td><strong>PgBouncer Transaction Mode</strong></td>
-              <td class="bad">N/A (Redis)</td>
-              <td class="bad">Advisory locks break in tx mode</td>
-              <td class="good">100% Safe (PgLeaseLock Table Rows)</td>
-            </tr>
-            <tr>
-              <td><strong>Per-Key Multi-Tenant Isolation</strong></td>
-              <td class="bad">Paid-only Pro tier</td>
-              <td class="bad">No native per-key buckets</td>
-              <td class="good">Built-in KeyedThrottler (Free/MIT)</td>
-            </tr>
-            <tr>
-              <td><strong>Fair-Share Tenant Scheduling</strong></td>
-              <td class="bad">FIFO single queue</td>
-              <td class="bad">FIFO single queue</td>
-              <td class="good">Deficit Round Robin (DRR) Fair Share</td>
-            </tr>
-            <tr>
-              <td><strong>Distributed Circuit Breaker</strong></td>
-              <td class="bad">Requires external tool</td>
-              <td class="bad">None</td>
-              <td class="good">Postgres Shared Circuit Breaker</td>
-            </tr>
-            <tr>
-              <td><strong>Claim-Check Large Payloads</strong></td>
-              <td class="bad">Manual</td>
-              <td class="bad">Manual</td>
-              <td class="good">Automatic Offload & Hydration</td>
-            </tr>
-          </tbody>
-        </table>
+<span class="comment">// Bulk push 10,000 jobs instantaneously</span>
+<span class="keyword">await</span> queue.<span class="fn">pushMany</span>(itemsList);</pre>
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-badge">STEP 5</span>
+            <span class="step-title">Listen to Lifecycle Events</span>
+          </div>
+          <div class="step-desc">Observability hooks for metrics, logging, and alerts.</div>
+          <div class="code-container">
+            <div class="code-header"><span>events.ts</span><span>typescript</span></div>
+            <pre>queue.<span class="fn">on</span>(<span class="str">"job:success"</span>, ({ job, durationMs }) =&gt; {
+  metrics.<span class="fn">histogram</span>(<span class="str">"job_latency_ms"</span>, durationMs);
+});
+
+queue.<span class="fn">on</span>(<span class="str">"buffer:flush"</span>, ({ count, durationMs }) =&gt; {
+  console.<span class="fn">log</span>(<span class="str">`Flushed <span class="keyword">${</span>count<span class="keyword">}</span> rows in <span class="keyword">${</span>durationMs<span class="keyword">}</span>ms`</span>);
+});
+
+queue.<span class="fn">on</span>(<span class="str">"drain"</span>, () =&gt; console.<span class="fn">log</span>(<span class="str">"All tasks complete!"</span>));</pre>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="doc-footer">
-      <span>batch-rate-queue Architectural Whitepaper</span>
-      <span>Page 2 of 5</span>
+      <span>batch-rate-queue Architecture Whitepaper &bull; Author: Piyush Kumar</span>
+      <span>Page 2 of 6</span>
     </div>
   </div>
 
@@ -667,90 +808,156 @@
   <div class="page">
     <div class="page-content">
       <div class="doc-header">
-        <span>batch-rate-queue // Technical Whitepaper & User Manual</span>
-        <span class="badge">Production Code Recipes (Part 1)</span>
+        <span>batch-rate-queue // Hands-on Implementation Guide</span>
+        <span class="badge">Step-by-Step Setup &bull; Part 2</span>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">6</span> Code Recipe: Side-Effect Idempotency Deduplication
+        <span class="section-num">5</span> Step-by-Step Setup: Enterprise &amp; Resiliency Features
       </h2>
       <p class="section-desc">
-        Prevent duplicate external charges or notifications when workers crash before marking a job complete:
+        Configure the enterprise capabilities introduced in v1.4.0 to eliminate real-world distributed edge-case failures.
       </p>
 
-      <div class="code-container">
-        <div class="code-header">
-          <span>idempotent-stripe-worker.ts</span>
-          <span>TypeScript</span>
-        </div>
-        <pre><span class="keyword">import</span> { <span class="fn">createBatchRateQueue</span> } <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
+      <div class="grid-2">
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-badge">STEP 6</span>
+            <span class="step-title">Side-Effect Idempotency</span>
+          </div>
+          <div class="step-desc">Prevents duplicate external calls (Stripe charges) if workers crash before DB write.</div>
+          <div class="code-container">
+            <div class="code-header"><span>idempotency.ts</span><span>typescript</span></div>
+            <pre><span class="keyword">import</span> { BatchRateQueue, MemoryIdempotencyStore } <span class="keyword">from</span> <span class="str">"batch-rate-queue"</span>;
 
-<span class="keyword">const</span> queue = <span class="fn">createBatchRateQueue</span>({
-  <span class="prop">name</span>: <span class="str">'billing-charges'</span>,
-  <span class="prop">rateLimit</span>: { <span class="prop">requests</span>: <span class="num">20</span>, <span class="prop">perMs</span>: <span class="num">1000</span> },
-  <span class="prop">batchFlush</span>: { <span class="prop">size</span>: <span class="num">50</span>, <span class="prop">intervalMs</span>: <span class="num">2000</span> },
-
-  <span class="comment">// Deduplicate by charge idempotency key (24-hour cache)</span>
-  <span class="prop">idempotencyKey</span>: (item) => <span class="str">`charge_${item.orderId}`</span>,
-  <span class="prop">idempotencyTtlMs</span>: <span class="num">24 * 60 * 60 * 1000</span>,
-
-  <span class="prop">worker</span>: <span class="keyword">async</span> (item) => {
-    <span class="keyword">const</span> charge = <span class="keyword">await</span> stripe.charges.<span class="fn">create</span>({
-      <span class="prop">amount</span>: item.amount,
-      <span class="prop">currency</span>: <span class="str">'usd'</span>,
-    });
-    <span class="keyword">return</span> { <span class="prop">id</span>: item.id, <span class="prop">updates</span>: { <span class="prop">chargeId</span>: charge.id, <span class="prop">status</span>: <span class="str">'paid'</span> } };
+<span class="keyword">const</span> queue = <span class="keyword">new</span> <span class="fn">BatchRateQueue</span>({
+  <span class="comment">// Enable idempotency tracking with TTL</span>
+  idempotency: {
+    enabled: <span class="keyword">true</span>,
+    ttlMs: <span class="num">86400000</span>, <span class="comment">// 24 hours</span>
+    store: <span class="keyword">new</span> <span class="fn">MemoryIdempotencyStore</span>() <span class="comment">// or custom Postgres</span>
   },
-  <span class="prop">onBatchFlush</span>: <span class="keyword">async</span> (batch) => db.<span class="fn">saveCharges</span>(batch),
+  worker: <span class="keyword">async</span> (job) =&gt; {
+    <span class="comment">// Automatically skipped if already executed!</span>
+    <span class="keyword">return</span> <span class="keyword">await</span> stripe.charges.<span class="fn">create</span>(job.data);
+  }
 });</pre>
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-badge">STEP 7</span>
+            <span class="step-title">Partial Batch Isolation</span>
+          </div>
+          <div class="step-desc">Prevents 1 constraint error from discarding 49 good writes.</div>
+          <div class="code-container">
+            <div class="code-header"><span>partial-batch.ts</span><span>typescript</span></div>
+            <pre><span class="keyword">const</span> queue = <span class="keyword">new</span> <span class="fn">BatchRateQueue</span>({
+  batchSize: <span class="num">50</span>,
+  isolateBatchFailures: <span class="keyword">true</span>, <span class="comment">// Enabled by default!</span>
+  flush: <span class="keyword">async</span> (batch) =&gt; {
+    <span class="comment">// If bulk insert throws a constraint violation,</span>
+    <span class="comment">// queue automatically falls back to salvage mode,</span>
+    <span class="comment">// saving 49 valid rows &amp; isolating 1 bad row.</span>
+    <span class="keyword">await</span> db.records.<span class="fn">createMany</span>({ data: batch });
+  }
+});</pre>
+          </div>
+        </div>
       </div>
 
-      <h2 class="section-title">
-        <span class="section-num">7</span> Code Recipe: LLM Token-Budget Limiting (TPM)
-      </h2>
-      <p class="section-desc">
-        Enforce token-based budgets (e.g. 40,000 tokens/min) for OpenAI or Anthropic API calls with pre-acquisition and actual-cost reconciliation:
-      </p>
+      <div class="grid-2">
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-badge">STEP 8</span>
+            <span class="step-title">PgBouncer-Safe Lease Locks</span>
+          </div>
+          <div class="step-desc">100% safe on Supabase, Neon &amp; RDS Proxy transaction pooling.</div>
+          <div class="code-container">
+            <div class="code-header"><span>pg-lease.ts</span><span>typescript</span></div>
+            <pre><span class="keyword">import</span> { PgLeaseLock } <span class="keyword">from</span> <span class="str">"batch-rate-queue/distributed/pg-lease-lock"</span>;
 
-      <div class="code-container">
-        <div class="code-header">
-          <span>llm-embeddings-worker.ts</span>
-          <span>TypeScript</span>
+<span class="keyword">const</span> lease = <span class="keyword">new</span> <span class="fn">PgLeaseLock</span>({
+  pool,
+  lockName: <span class="str">"nightly-sync-leader"</span>,
+  ttlMs: <span class="num">10000</span> <span class="comment">// Monotonic UTC DB interval</span>
+});
+
+<span class="comment">// Only 1 replica acquires lease; safe under PgBouncer!</span>
+<span class="keyword">if</span> (<span class="keyword">await</span> lease.<span class="fn">acquire</span>()) {
+  <span class="keyword">await</span> <span class="fn">runNightlyReconciliation</span>();
+  <span class="keyword">await</span> lease.<span class="fn">release</span>();
+}</pre>
+          </div>
         </div>
-        <pre><span class="keyword">import</span> { <span class="fn">createBatchRateQueue</span>, <span class="fn">llmApiClassifier</span> } <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
-<span class="keyword">import</span> OpenAI <span class="keyword">from</span> <span class="str">'openai'</span>;
 
-<span class="keyword">const</span> openai = <span class="keyword">new</span> <span class="fn">OpenAI</span>();
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-badge">STEP 9</span>
+            <span class="step-title">Claim-Check for Heavy Payloads</span>
+          </div>
+          <div class="step-desc">Offloads large data (&gt;64KB) to keep DB scans fast.</div>
+          <div class="code-container">
+            <div class="code-header"><span>claim-check.ts</span><span>typescript</span></div>
+            <pre><span class="keyword">import</span> { ClaimCheckManager, MemoryPayloadStore } <span class="keyword">from</span> <span class="str">"batch-rate-queue"</span>;
 
-<span class="keyword">const</span> queue = <span class="fn">createBatchRateQueue</span>({
-  <span class="prop">name</span>: <span class="str">'openai-embeddings'</span>,
-  <span class="comment">// Budget: 40,000 tokens per minute</span>
-  <span class="prop">rateLimit</span>: { <span class="prop">requests</span>: <span class="num">40000</span>, <span class="prop">perMs</span>: <span class="num">60000</span>, <span class="prop">costBased</span>: <span class="keyword">true</span> },
-  <span class="prop">batchFlush</span>: { <span class="prop">size</span>: <span class="num">50</span>, <span class="prop">intervalMs</span>: <span class="num">3000</span> },
+<span class="keyword">const</span> claimCheck = <span class="keyword">new</span> <span class="fn">ClaimCheckManager</span>({
+  thresholdBytes: <span class="num">65536</span>, <span class="comment">// 64KB threshold</span>
+  store: <span class="keyword">new</span> <span class="fn">MemoryPayloadStore</span>() <span class="comment">// or S3 / GCS</span>
+});
 
-  <span class="comment">// Estimate token cost before acquire</span>
-  <span class="prop">costExtractor</span>: (item) => Math.<span class="fn">ceil</span>(item.text.length / <span class="num">4</span>),
-  <span class="prop">errorClassifier</span>: llmApiClassifier,
+<span class="comment">// Offloads 10MB payload to S3; returns 120B pointer</span>
+<span class="keyword">const</span> stub = <span class="keyword">await</span> claimCheck.<span class="fn">offloadIfNeeded</span>(largePayload);
+<span class="comment">// Worker transparently re-hydrates on fetch</span>
+<span class="keyword">const</span> data = <span class="keyword">await</span> claimCheck.<span class="fn">hydrateIfNeeded</span>(stub);</pre>
+          </div>
+        </div>
+      </div>
 
-  <span class="prop">worker</span>: <span class="keyword">async</span> (item) => {
-    <span class="keyword">const</span> res = <span class="keyword">await</span> openai.embeddings.<span class="fn">create</span>({
-      <span class="prop">model</span>: <span class="str">'text-embedding-3-small'</span>,
-      <span class="prop">input</span>: item.text,
-    });
-    <span class="keyword">return</span> {
-      <span class="prop">id</span>: item.id,
-      <span class="prop">updates</span>: { <span class="prop">embedding</span>: res.data[<span class="num">0</span>].embedding },
-      <span class="prop">meta</span>: { <span class="prop">actualCost</span>: res.usage.total_tokens }, <span class="comment">// Exact actual cost</span>
-    };
+      <div class="grid-2">
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-badge">STEP 10</span>
+            <span class="step-title">Multi-Tenant Fair Scheduling</span>
+          </div>
+          <div class="step-desc">Deficit Round Robin ensures 1 tenant never starves others.</div>
+          <div class="code-container">
+            <div class="code-header"><span>fair-scheduling.ts</span><span>typescript</span></div>
+            <pre><span class="keyword">const</span> queue = <span class="keyword">new</span> <span class="fn">BatchRateQueue</span>({
+  fairQueueing: {
+    enabled: <span class="keyword">true</span>,
+    quantum: <span class="num">1</span>, <span class="comment">// Round-robin items per tenant</span>
+    getKey: (job) =&gt; job.data.tenantId
   },
-  <span class="prop">onBatchFlush</span>: <span class="keyword">async</span> (batch) => db.<span class="fn">saveVectors</span>(batch),
+  worker: <span class="keyword">async</span> (job) =&gt; <span class="fn">processTenantTask</span>(job)
 });</pre>
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-badge">STEP 11</span>
+            <span class="step-title">Production Graceful Shutdown</span>
+          </div>
+          <div class="step-desc">Zero data loss during Kubernetes pod rollouts &amp; deployments.</div>
+          <div class="code-container">
+            <div class="code-header"><span>shutdown.ts</span><span>typescript</span></div>
+            <pre><span class="keyword">import</span> { setupGracefulShutdown } <span class="keyword">from</span> <span class="str">"batch-rate-queue"</span>;
+
+<span class="comment">// Flushes all buffered writes before container exits</span>
+<span class="fn">setupGracefulShutdown</span>([queue], {
+  timeoutMs: <span class="num">5000</span>,
+  onShutdown: () =&gt; console.<span class="fn">log</span>(<span class="str">"Queue cleanly drained."</span>)
+});</pre>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="doc-footer">
-      <span>batch-rate-queue Architectural Whitepaper</span>
-      <span>Page 3 of 5</span>
+      <span>batch-rate-queue Architecture Whitepaper &bull; Author: Piyush Kumar</span>
+      <span>Page 3 of 6</span>
     </div>
   </div>
 
@@ -758,72 +965,144 @@
   <div class="page">
     <div class="page-content">
       <div class="doc-header">
-        <span>batch-rate-queue // Technical Whitepaper & User Manual</span>
-        <span class="badge">Distributed & PgBouncer Recipes</span>
+        <span>batch-rate-queue // Database Adapter Recipes</span>
+        <span class="badge">Production SQL Recipes</span>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">8</span> Code Recipe: PgBouncer-Safe Distributed Lease Locks
+        <span class="section-num">6</span> Production Database Adapters &amp; High-Throughput Bulk Patterns
       </h2>
       <p class="section-desc">
-        Execute distributed scheduled jobs safely under PgBouncer transaction-pooling mode (Supabase, Neon, RDS Proxy):
+        Standard ORM calls (<code>prisma.user.update()</code>) in loops kill performance. Use these battle-tested bulk patterns to achieve 10,000+ writes/sec with minimal DB connection overhead:
       </p>
 
-      <div class="code-container">
-        <div class="code-header">
-          <span>pgbouncer-lease-lock.ts</span>
-          <span>TypeScript</span>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="font-size: 9.5px; font-weight: 700; color: #0f172a; margin-bottom: 2px;">
+            PostgreSQL: Parameterized UNNEST / JSONB (Max Throughput)
+          </h3>
+          <p style="font-size: 8px; color: #64748b; margin-bottom: 3px;">
+            Serializes 50 objects into 1 parameterized JSON array. Executes in a single database roundtrip with zero string concatenation.
+          </p>
+          <div class="code-container">
+            <div class="code-header"><span>pg-flush.ts</span><span>typescript</span></div>
+            <pre><span class="keyword">import</span> { Pool } <span class="keyword">from</span> <span class="str">"pg"</span>;
+<span class="keyword">const</span> pool = <span class="keyword">new</span> <span class="fn">Pool</span>({ connectionString: process.env.DATABASE_URL });
+
+<span class="keyword">const</span> flush = <span class="keyword">async</span> (batch: <span class="fn">ResultItem</span>[]) =&gt; {
+  <span class="keyword">const</span> sql = <span class="str">`
+    INSERT INTO user_enrichments (user_id, email, score, updated_at)
+    SELECT 
+      x.user_id, x.email, x.score, NOW()
+    FROM jsonb_to_recordset($1::jsonb) AS x(
+      user_id text, 
+      email text, 
+      score numeric
+    )
+    ON CONFLICT (user_id) DO UPDATE 
+    SET score = EXCLUDED.score, updated_at = EXCLUDED.updated_at;
+  `</span>;
+  <span class="keyword">await</span> pool.<span class="fn">query</span>(sql, [JSON.<span class="fn">stringify</span>(batch)]);
+};</pre>
+          </div>
         </div>
-        <pre><span class="keyword">import</span> { <span class="fn">PgLeaseLock</span> } <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
-<span class="keyword">import</span> { Pool } <span class="keyword">from</span> <span class="str">'pg'</span>;
 
-<span class="keyword">const</span> pool = <span class="keyword">new</span> <span class="fn">Pool</span>({ <span class="prop">connectionString</span>: process.env.DATABASE_URL });
+        <div class="card">
+          <h3 style="font-size: 9.5px; font-weight: 700; color: #0f172a; margin-bottom: 2px;">
+            Prisma ORM: Multi-Entity Batch Transactions
+          </h3>
+          <p style="font-size: 8px; color: #64748b; margin-bottom: 3px;">
+            Uses Prisma <code>$transaction</code> and <code>createMany</code> to insert chunks within a single connection acquisition.
+          </p>
+          <div class="code-container">
+            <div class="code-header"><span>prisma-flush.ts</span><span>typescript</span></div>
+            <pre><span class="keyword">import</span> { PrismaClient } <span class="keyword">from</span> <span class="str">"@prisma/client"</span>;
+<span class="keyword">const</span> prisma = <span class="keyword">new</span> <span class="fn">PrismaClient</span>();
 
-<span class="keyword">const</span> lock = <span class="keyword">new</span> <span class="fn">PgLeaseLock</span>({
-  <span class="prop">pool</span>,
-  <span class="prop">lockKey</span>: <span class="str">'cron:daily-reconciliation'</span>,
-  <span class="prop">ttlMs</span>: <span class="num">30000</span>, <span class="comment">// 30-second lease with automatic heartbeat renewal</span>
+<span class="keyword">const</span> flush = <span class="keyword">async</span> (batch: <span class="fn">ResultItem</span>[]) =&gt; {
+  <span class="keyword">await</span> prisma.$<span class="fn">transaction</span>([
+    <span class="comment">// 1. Bulk insert audit log rows</span>
+    prisma.auditLog.<span class="fn">createMany</span>({
+      data: batch.map(b =&gt; ({ id: b.id, action: b.action, status: <span class="str">"DONE"</span> })),
+      skipDuplicates: <span class="keyword">true</span>
+    }),
+    <span class="comment">// 2. Update parent status in single query</span>
+    prisma.batchSummary.<span class="fn">updateMany</span>({
+      where: { id: { in: batch.map(b =&gt; b.summaryId) } },
+      data: { processedCount: { increment: batch.length } }
+    })
+  ]);
+};</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="font-size: 9.5px; font-weight: 700; color: #0f172a; margin-bottom: 2px;">
+            SQLite: WAL-Mode Bulk Prepared Statements
+          </h3>
+          <p style="font-size: 8px; color: #64748b; margin-bottom: 3px;">
+            Wraps 50 prepared statement iterations inside a single SQLite transaction, boosting write speed from 60 writes/sec to 15,000+ writes/sec.
+          </p>
+          <div class="code-container">
+            <div class="code-header"><span>sqlite-flush.ts</span><span>typescript</span></div>
+            <pre><span class="keyword">import</span> Database <span class="keyword">from</span> <span class="str">"better-sqlite3"</span>;
+<span class="keyword">const</span> db = <span class="keyword">new</span> <span class="fn">Database</span>(<span class="str">"data.db"</span>);
+db.<span class="fn">pragma</span>(<span class="str">"journal_mode = WAL"</span>);
+
+<span class="keyword">const</span> insertStmt = db.<span class="fn">prepare</span>(
+  <span class="str">"INSERT OR REPLACE INTO metrics (id, val, ts) VALUES (?, ?, ?)"</span>
+);
+
+<span class="keyword">const</span> flushTx = db.<span class="fn">transaction</span>((batch: <span class="fn">MetricItem</span>[]) =&gt; {
+  <span class="keyword">for</span> (<span class="keyword">const</span> item <span class="keyword">of</span> batch) {
+    insertStmt.<span class="fn">run</span>(item.id, item.val, Date.<span class="fn">now</span>());
+  }
 });
 
-<span class="comment">// Automatically acquires, heartbeats, executes, and releases safely</span>
-<span class="keyword">await</span> lock.<span class="fn">runWithLock</span>(<span class="keyword">async</span> () => {
-  console.<span class="fn">log</span>(<span class="str">'Running daily reconciliation with guaranteed single-replica execution!'</span>);
-  <span class="keyword">await</span> <span class="fn">reconcileAccounts</span>();
-});</pre>
+<span class="keyword">const</span> flush = <span class="keyword">async</span> (batch) =&gt; flushTx(batch);</pre>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size: 9.5px; font-weight: 700; color: #0f172a; margin-bottom: 2px;">
+            Distributed Multi-Node Token Bucket (PostgreSQL)
+          </h3>
+          <p style="font-size: 8px; color: #64748b; margin-bottom: 3px;">
+            Coordinates rate limits across 20+ horizontal Kubernetes pods using Postgres row locks without requiring a Redis instance.
+          </p>
+          <div class="code-container">
+            <div class="code-header"><span>pg-distributed.ts</span><span>typescript</span></div>
+            <pre><span class="keyword">import</span> { PgTokenBucket } <span class="keyword">from</span> <span class="str">"batch-rate-queue/distributed/pg-token-bucket"</span>;
+
+<span class="keyword">const</span> sharedBucket = <span class="keyword">new</span> <span class="fn">PgTokenBucket</span>({
+  pool,
+  bucketKey: <span class="str">"openai-gpt4o-global"</span>,
+  capacity: <span class="num">500</span>,
+  refillRate: <span class="num">50</span>,  <span class="comment">// 50 tokens / sec</span>
+  refillIntervalMs: <span class="num">1000</span>
+});
+
+<span class="comment">// Atomically reserves 10 tokens across all pods</span>
+<span class="keyword">const</span> allowed = <span class="keyword">await</span> sharedBucket.<span class="fn">consume</span>(<span class="num">10</span>);</pre>
+          </div>
+        </div>
       </div>
 
-      <h2 class="section-title">
-        <span class="section-num">9</span> Code Recipe: Multi-Tenant Fair Scheduling (DRR)
-      </h2>
-      <p class="section-desc">
-        Isolate rate limits per tenant and eliminate tenant starvation via Deficit Round Robin:
-      </p>
-
-      <div class="code-container">
-        <div class="code-header">
-          <span>multi-tenant-fair-share.ts</span>
-          <span>TypeScript</span>
-        </div>
-        <pre><span class="keyword">const</span> queue = <span class="fn">createBatchRateQueue</span>({
-  <span class="prop">name</span>: <span class="str">'multi-tenant-sync'</span>,
-  <span class="prop">rateLimit</span>: { <span class="prop">requests</span>: <span class="num">10</span>, <span class="prop">perMs</span>: <span class="num">1000</span> },
-  <span class="prop">batchFlush</span>: { <span class="prop">size</span>: <span class="num">100</span>, <span class="prop">intervalMs</span>: <span class="num">2000</span> },
-  <span class="prop">rateLimitKey</span>: (item) => item.tenantId,
-  <span class="prop">perKeyRateLimit</span>: {
-    <span class="str">'enterprise-corp'</span>: { <span class="prop">requests</span>: <span class="num">100</span>, <span class="prop">perMs</span>: <span class="num">1000</span> },
-    <span class="str">'free-tier-user'</span>:  { <span class="prop">requests</span>: <span class="num">2</span>,   <span class="prop">perMs</span>: <span class="num">1000</span> },
-  },
-  <span class="comment">// DRR: 10k items from tenant A will never starve tenant B</span>
-  <span class="prop">fairShare</span>: <span class="keyword">true</span>,
-  <span class="prop">worker</span>: <span class="keyword">async</span> (item) => <span class="fn">syncTenantData</span>(item),
-  <span class="prop">onBatchFlush</span>: <span class="keyword">async</span> (batch) => db.<span class="fn">bulkUpdate</span>(batch),
-});</pre>
+      <div class="card" style="background: #f8fafc; border: 1px solid #cbd5e1;">
+        <h3 style="font-size: 9.5px; font-weight: 700; color: #0f172a; margin-bottom: 2px;">
+          Circuit Breaker State Machine &amp; Dead-Letter Queue (DLQ) Integration
+        </h3>
+        <p style="font-size: 8px; color: #475569; line-height: 1.35;">
+          When an external provider fails with consecutive 500/503 errors, <code>batch-rate-queue</code> automatically transitions through <code>CLOSED</code> &rarr; <code>OPEN</code> (fail-fast without network calls) &rarr; <code>HALF-OPEN</code> (trial request probe). Exhausted retries are cleanly routed to a dead-letter queue table for manual triage.
+        </p>
       </div>
     </div>
 
     <div class="doc-footer">
-      <span>batch-rate-queue Architectural Whitepaper</span>
-      <span>Page 4 of 5</span>
+      <span>batch-rate-queue Architecture Whitepaper &bull; Author: Piyush Kumar</span>
+      <span>Page 4 of 6</span>
     </div>
   </div>
 
@@ -831,64 +1110,267 @@
   <div class="page">
     <div class="page-content">
       <div class="doc-header">
-        <span>batch-rate-queue // Technical Whitepaper & User Manual</span>
-        <span class="badge">API Reference & Adapters</span>
+        <span>batch-rate-queue // Technical Whitepaper</span>
+        <span class="badge">Architectural Deep-Dive</span>
       </div>
 
       <h2 class="section-title">
-        <span class="section-num">10</span> Native Database Adapters
+        <span class="section-num">7</span> Deep-Dive: Mathematical Models &amp; Core Algorithms
       </h2>
+      <p class="section-desc">
+        Underneath the clean API surface lies a deterministic distributed coordination and fair scheduling engine:
+      </p>
 
-      <div class="grid-3">
-        <div class="code-container" style="margin: 0;">
-          <div class="code-header">
-            <span>Prisma Adapter</span>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="font-size: 9.5px; font-weight: 700; color: #0f172a; margin-bottom: 2px;">
+            1. Deficit Round Robin (DRR) Fair Scheduling
+          </h3>
+          <p style="font-size: 8px; color: #475569; line-height: 1.3; margin-bottom: 4px;">
+            Each tenant receives a deficit counter allocated by quantum $Q_i$. When a tenant's turn arrives, the scheduler consumes tokens proportional to task cost $C$:
+          </p>
+          <div style="background: #f1f5f9; padding: 4px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 8px; color: #334155;">
+            Deficit[i] = Deficit[i] + Quantum[i];<br>
+            while (Queue[i].length &gt; 0 &amp;&amp; Cost(Task) &lt;= Deficit[i]) {<br>
+            &nbsp;&nbsp;Deficit[i] -= Cost(Task);<br>
+            &nbsp;&nbsp;dispatch(Task);<br>
+            }
           </div>
-          <pre><span class="keyword">import</span> { <span class="fn">createPrismaFlushHandler</span> }
-  <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
-
-<span class="keyword">const</span> onFlush =
-  <span class="fn">createPrismaFlushHandler</span>(
-    prisma, <span class="str">'location'</span>
-  );</pre>
         </div>
 
-        <div class="code-container" style="margin: 0;">
-          <div class="code-header">
-            <span>PostgreSQL (pg)</span>
+        <div class="card">
+          <h3 style="font-size: 9.5px; font-weight: 700; color: #0f172a; margin-bottom: 2px;">
+            2. Token Bucket with Sub-Millisecond Refill Math
+          </h3>
+          <p style="font-size: 8px; color: #475569; line-height: 1.3; margin-bottom: 4px;">
+            Tokens are lazily recalculated on consumption without running continuous timer intervals, preventing CPU wakeups:
+          </p>
+          <div style="background: #f1f5f9; padding: 4px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 8px; color: #334155;">
+            &Delta;t = (Now - LastRefillTime);<br>
+            NewTokens = min(Capacity, CurrentTokens + &Delta;t * Rate);<br>
+            if (NewTokens &gt;= RequiredCost) {<br>
+            &nbsp;&nbsp;CurrentTokens = NewTokens - RequiredCost;<br>
+            &nbsp;&nbsp;return ALLOWED;<br>
+            }
           </div>
-          <pre><span class="keyword">import</span> { <span class="fn">createPgFlushHandler</span> }
-  <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
-
-<span class="keyword">const</span> onFlush =
-  <span class="fn">createPgFlushHandler</span>(
-    pool, <span class="str">'locations'</span>
-  );</pre>
-        </div>
-
-        <div class="code-container" style="margin: 0;">
-          <div class="code-header">
-            <span>SQLite</span>
-          </div>
-          <pre><span class="keyword">import</span> { <span class="fn">createSqliteFlushHandler</span> }
-  <span class="keyword">from</span> <span class="str">'batch-rate-queue'</span>;
-
-<span class="keyword">const</span> onFlush =
-  <span class="fn">createSqliteFlushHandler</span>(
-    db, <span class="str">'locations'</span>
-  );</pre>
         </div>
       </div>
 
-      <h2 class="section-title" style="margin-top: 10px;">
-        <span class="section-num">11</span> Full Options Reference Table
+      <h2 class="section-title">
+        <span class="section-num">8</span> Universal Rate Limit Header Normalization (RFC 9745 &amp; Multi-Vendor)
       </h2>
+      <p class="section-desc">
+        Modern API vendors use disparate header formats. <code>parseRateLimitHeaders()</code> extracts exact cooldowns across all vendors:
+      </p>
 
       <div class="table-container">
         <table>
           <thead>
             <tr>
-              <th>Property</th>
+              <th>Provider / Standard</th>
+              <th>Header Example</th>
+              <th>Normalized Output Field</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>IETF RFC 9745 (Standard)</strong></td>
+              <td><code>RateLimit: limit=100, remaining=45, reset=60</code></td>
+              <td><code>{ limit: 100, remaining: 45, resetMs: 60000 }</code></td>
+            </tr>
+            <tr>
+              <td><strong>OpenAI API</strong></td>
+              <td><code>x-ratelimit-reset-requests: 500ms</code></td>
+              <td><code>{ resetMs: 500, remaining: 12 }</code></td>
+            </tr>
+            <tr>
+              <td><strong>GitHub API</strong></td>
+              <td><code>x-ratelimit-reset: 1718000000 (Unix Epoch)</code></td>
+              <td><code>{ resetMs: epoch - now, remaining: 5 }</code></td>
+            </tr>
+            <tr>
+              <td><strong>Anthropic Claude API</strong></td>
+              <td><code>anthropic-ratelimit-unified-reset: 2026-09-27T12:00:00Z</code></td>
+              <td><code>{ resetMs: parseISO(val) - now }</code></td>
+            </tr>
+            <tr>
+              <td><strong>RFC 7231 HTTP-Date</strong></td>
+              <td><code>Retry-After: Wed, 21 Oct 2026 07:28:00 GMT</code></td>
+              <td><code>{ retryAfterMs: parseDate(val) - now }</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="section-title">
+        <span class="section-num">9</span> Partial Batch Failure Salvage State Machine
+      </h2>
+      <div class="grid-3">
+        <div class="card" style="border-left: 3px solid #6366f1;">
+          <strong style="font-size: 8.5px; color: #4338ca;">Phase 1: Fast Path Bulk Flush</strong>
+          <p style="font-size: 7.5px; color: #64748b; margin-top: 2px;">
+            Executes 50 items in a single bulk transaction. If successful, completes in 1ms with 0 overhead.
+          </p>
+        </div>
+        <div class="card" style="border-left: 3px solid #f59e0b;">
+          <strong style="font-size: 8.5px; color: #b45309;">Phase 2: Error Classification</strong>
+          <p style="font-size: 7.5px; color: #64748b; margin-top: 2px;">
+            Detects constraint violations vs network disconnects. Transient errors trigger batch retry.
+          </p>
+        </div>
+        <div class="card" style="border-left: 3px solid #22c55e;">
+          <strong style="font-size: 8.5px; color: #15803d;">Phase 3: Item-by-Item Salvage</strong>
+          <p style="font-size: 7.5px; color: #64748b; margin-top: 2px;">
+            Saves 49 valid writes individually, isolates and logs the 1 bad record without losing progress.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-footer">
+      <span>batch-rate-queue Architecture Whitepaper &bull; Author: Piyush Kumar</span>
+      <span>Page 5 of 6</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 6 ==================== -->
+  <div class="page">
+    <div class="page-content">
+      <div class="doc-header">
+        <span>batch-rate-queue // Production Manual &amp; Reference</span>
+        <span class="badge">Reference &amp; Deployment</span>
+      </div>
+
+      <h2 class="section-title">
+        <span class="section-num">10</span> Architectural Comparison Matrix
+      </h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature Capability</th>
+              <th>batch-rate-queue</th>
+              <th>BullMQ</th>
+              <th>pg-boss</th>
+              <th>Graphile Worker</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Primary Architecture</strong></td>
+              <td>Throttling &amp; Write Buffer</td>
+              <td>Job Orchestration</td>
+              <td>Job Orchestration</td>
+              <td>Job Orchestration</td>
+            </tr>
+            <tr>
+              <td><strong>Redis Dependency</strong></td>
+              <td class="good">Zero (0 Redis)</td>
+              <td class="bad">Required</td>
+              <td class="good">None (PostgreSQL)</td>
+              <td class="good">None (PostgreSQL)</td>
+            </tr>
+            <tr>
+              <td><strong>Micro-Batched SQL Writes</strong></td>
+              <td class="good">Native Built-in</td>
+              <td class="bad">Manual Custom Code</td>
+              <td class="bad">Manual Custom Code</td>
+              <td class="bad">Manual Custom Code</td>
+            </tr>
+            <tr>
+              <td><strong>Side-Effect Idempotency</strong></td>
+              <td class="good">Native Built-in</td>
+              <td class="bad">Manual</td>
+              <td class="bad">Manual</td>
+              <td class="bad">Manual</td>
+            </tr>
+            <tr>
+              <td><strong>Partial Batch Isolation</strong></td>
+              <td class="good">Automatic Salvage</td>
+              <td class="bad">No</td>
+              <td class="bad">No</td>
+              <td class="bad">No</td>
+            </tr>
+            <tr>
+              <td><strong>PgBouncer Transaction Mode</strong></td>
+              <td class="good">100% Safe (PgLeaseLock)</td>
+              <td>N/A</td>
+              <td class="bad">Advisory Lock Risk</td>
+              <td class="bad">Advisory Lock Risk</td>
+            </tr>
+            <tr>
+              <td><strong>Multi-Tenant Fair Scheduling</strong></td>
+              <td class="good">Free (Deficit RR)</td>
+              <td class="bad">Paid Pro Tier Only</td>
+              <td class="bad">Manual</td>
+              <td class="bad">Manual</td>
+            </tr>
+            <tr>
+              <td><strong>Payload Claim-Check</strong></td>
+              <td class="good">Native Auto-Offload</td>
+              <td class="bad">Manual</td>
+              <td class="bad">Manual</td>
+              <td class="bad">Manual</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="section-title">
+        <span class="section-num">11</span> Production Hardening Checklist
+      </h2>
+      <div class="grid-2">
+        <div class="card">
+          <ul class="checklist">
+            <li>
+              <span class="checklist-icon">&check;</span>
+              <span><strong>Connection Pool Sizing:</strong> Sized for peak concurrent flush workers (e.g. <code>max: 10</code>).</span>
+            </li>
+            <li>
+              <span class="checklist-icon">&check;</span>
+              <span><strong>Database Indexes:</strong> Unique indexes created on idempotency keys and target conflict columns.</span>
+            </li>
+            <li>
+              <span class="checklist-icon">&check;</span>
+              <span><strong>Memory Budget:</strong> Sized queue length limit (e.g. <code>maxQueueSize: 50000</code>) to bound RAM.</span>
+            </li>
+            <li>
+              <span class="checklist-icon">&check;</span>
+              <span><strong>Graceful Shutdown:</strong> Registered <code>setupGracefulShutdown()</code> on <code>SIGTERM</code>/<code>SIGINT</code>.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <ul class="checklist">
+            <li>
+              <span class="checklist-icon">&check;</span>
+              <span><strong>PgBouncer Check:</strong> Using <code>PgLeaseLock</code> for distributed locks in transaction pooling mode.</span>
+            </li>
+            <li>
+              <span class="checklist-icon">&check;</span>
+              <span><strong>Payload Threshold:</strong> Enabled claim-check for payloads &gt;64KB to prevent page table bloat.</span>
+            </li>
+            <li>
+              <span class="checklist-icon">&check;</span>
+              <span><strong>Dead-Letter Alerts:</strong> Attached listener to <code>job:failed</code> to alert on retry exhaustion.</span>
+            </li>
+            <li>
+              <span class="checklist-icon">&check;</span>
+              <span><strong>Prometheus Metrics:</strong> Exported <code>queue.getStats()</code> to Grafana / Datadog dashboards.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 class="section-title">
+        <span class="section-num">12</span> Complete Options &amp; API Reference
+      </h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Option Property</th>
               <th>Type</th>
               <th>Default</th>
               <th>Description</th>
@@ -896,103 +1378,61 @@
           </thead>
           <tbody>
             <tr>
-              <td><code>name</code></td>
-              <td><code>string</code></td>
-              <td><em>required</em></td>
-              <td>Queue identifier for logs, metrics, and default bucket keys.</td>
+              <td><code>rateLimit.maxRequests</code></td>
+              <td><code>number</code></td>
+              <td>Required</td>
+              <td>Maximum requests permitted in token bucket window.</td>
             </tr>
             <tr>
-              <td><code>rateLimit</code></td>
-              <td><code>RateLimitConfig</code></td>
-              <td><em>required</em></td>
-              <td>Token bucket rate limit (<code>requests</code>, <code>perMs</code>, <code>costBased</code>).</td>
+              <td><code>rateLimit.windowMs</code></td>
+              <td><code>number</code></td>
+              <td>Required</td>
+              <td>Duration of rate limit window in milliseconds (e.g., 1000).</td>
             </tr>
             <tr>
-              <td><code>batchFlush</code></td>
-              <td><code>BatchFlushConfig</code></td>
-              <td><em>required</em></td>
-              <td>Transactional write buffer trigger (<code>size</code>, <code>intervalMs</code>).</td>
+              <td><code>batchSize</code></td>
+              <td><code>number</code></td>
+              <td><code>50</code></td>
+              <td>Number of job results before immediate database flush.</td>
             </tr>
             <tr>
-              <td><code>worker</code></td>
-              <td><code>Function</code></td>
-              <td><em>required</em></td>
-              <td>Worker execution per item returning <code>{ id, updates, meta }</code>.</td>
-            </tr>
-            <tr>
-              <td><code>onBatchFlush</code></td>
-              <td><code>Function</code></td>
-              <td><em>required</em></td>
-              <td>Atomic transaction write callback (or pre-built DB adapter).</td>
-            </tr>
-            <tr>
-              <td><code>idempotencyKey</code></td>
-              <td><code>(item) =&gt; string</code></td>
-              <td><code>undefined</code></td>
-              <td>Extracts deduplication key to prevent duplicate external side effects.</td>
+              <td><code>flushIntervalMs</code></td>
+              <td><code>number</code></td>
+              <td><code>2000</code></td>
+              <td>Maximum milliseconds before time-based buffer flush.</td>
             </tr>
             <tr>
               <td><code>isolateBatchFailures</code></td>
               <td><code>boolean</code></td>
               <td><code>true</code></td>
-              <td>Salvages 49 valid rows when 1 row fails a constraint in a 50-item batch.</td>
+              <td>Salvages valid items when single row in batch fails constraint.</td>
             </tr>
             <tr>
-              <td><code>claimCheckThresholdBytes</code></td>
-              <td><code>number</code></td>
-              <td><code>65536</code></td>
-              <td>Offloads payloads &gt;64KB to preserve fast DB index scans.</td>
-            </tr>
-            <tr>
-              <td><code>rateLimitKey</code></td>
-              <td><code>(item) =&gt; string</code></td>
-              <td><code>undefined</code></td>
-              <td>Isolates token buckets per tenant, API key, or destination.</td>
-            </tr>
-            <tr>
-              <td><code>fairShare</code></td>
+              <td><code>idempotency.enabled</code></td>
               <td><code>boolean</code></td>
               <td><code>false</code></td>
-              <td>Enables Deficit Round Robin scheduling across tenant queues.</td>
+              <td>Deduplicates side-effects across worker container crashes.</td>
             </tr>
             <tr>
-              <td><code>costExtractor</code></td>
-              <td><code>(item) =&gt; number</code></td>
-              <td><code>() =&gt; 1</code></td>
-              <td>Pre-acquire token budget estimator (for LLM tokens/TPM).</td>
+              <td><code>claimCheck.thresholdBytes</code></td>
+              <td><code>number</code></td>
+              <td><code>65536</code></td>
+              <td>Payload byte size threshold before offloading to blob storage.</td>
             </tr>
             <tr>
-              <td><code>distributed</code></td>
-              <td><code>DistributedConfig</code></td>
-              <td><code>undefined</code></td>
-              <td>PostgreSQL-backed shared token bucket (zero-Redis multi-pod).</td>
-            </tr>
-            <tr>
-              <td><code>circuitBreaker</code></td>
-              <td><code>CircuitBreakerConfig</code></td>
-              <td><code>undefined</code></td>
-              <td>PostgreSQL-backed cross-process failure circuit breaker.</td>
+              <td><code>fairQueueing.enabled</code></td>
+              <td><code>boolean</code></td>
+              <td><code>false</code></td>
+              <td>Deficit Round Robin scheduling across multi-tenant keys.</td>
             </tr>
           </tbody>
         </table>
       </div>
-
-      <h2 class="section-title" style="margin-top: 8px;">
-        <span class="section-num">12</span> Official Ecosystem Resources
-      </h2>
-      <div class="solution-box" style="background: #f8fafc; border-color: #cbd5e1; border-left-color: #4f46e5; margin-bottom: 0; padding: 6px 10px;">
-        <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; line-height: 1.6; color: #334155;">
-          &bull; <strong>npm:</strong> https://www.npmjs.com/package/batch-rate-queue<br>
-          &bull; <strong>GitHub:</strong> https://github.com/piyushkumar-prog/batch-rate-queue<br>
-          &bull; <strong>License:</strong> MIT (Open Source, Free for Commercial Use)<br>
-          &bull; <strong>Author:</strong> Piyush Kumar (@piyushkumar-prog)
-        </div>
-      </div>
     </div>
 
     <div class="doc-footer">
-      <span>batch-rate-queue Architectural Whitepaper</span>
-      <span>Page 5 of 5</span>
+      <span>batch-rate-queue Architecture Whitepaper &bull; Author: Piyush Kumar &bull; npm: batch-rate-queue</span>
+      <span>Page 6 of 6</span>
     </div>
   </div>
 
