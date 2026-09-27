@@ -8,6 +8,7 @@ import {
   WorkerResult,
   QueueEvents,
   RateChangeEvent,
+  BudgetStats,
 } from '../types';
 import { Throttler } from './throttler';
 import { AdaptiveThrottler, WorkerOutcome } from './adaptive-throttler';
@@ -15,13 +16,16 @@ import { KeyedThrottler } from './keyed-throttler';
 import { FairScheduler } from './fair-scheduler';
 import { WriteBuffer } from './buffer';
 import { setupGracefulShutdown } from './shutdown';
+import { PgTokenBucket } from '../distributed/pg-token-bucket';
+import { PgCircuitBreaker, CircuitState } from '../distributed/pg-circuit-breaker';
 
 /**
  * BatchRateQueue
  *
  * The main orchestrator that ties together:
- *   - A token-bucket rate limiter (Throttler, AdaptiveThrottler, or KeyedThrottler)
+ *   - A token-bucket rate limiter (Throttler, AdaptiveThrottler, KeyedThrottler, or PgTokenBucket)
  *   - An optional fair-share scheduler (FairScheduler)
+ *   - An optional distributed circuit breaker (PgCircuitBreaker)
  *   - An in-memory write buffer (WriteBuffer)
  *   - A self-scheduling drain loop
  *   - Graceful shutdown handling
@@ -36,23 +40,10 @@ import { setupGracefulShutdown } from './shutdown';
  *   - Per-key/per-tenant rate limiting (rateLimitKey + perKeyRateLimit)
  *   - Weighted fair-share scheduling (fairShare: true) via Deficit Round Robin
  *
- * Usage:
- * ```ts
- * const queue = new BatchRateQueue({
- *   name: 'my-enrichment',
- *   rateLimit: { requests: 2, perMs: 1000 },
- *   batchFlush: { size: 50, intervalMs: 2000 },
- *   worker: async (item) => {
- *     const result = await callApi(item);
- *     return { id: item.id, updates: result };
- *   },
- *   onBatchFlush: async (batch) => {
- *     await db.batchUpdate(batch);
- *   },
- * });
- *
- * await queue.addMany(items);
- * ```
+ * v1.3.0 additions:
+ *   - Distributed rate limiting via PostgreSQL shared token bucket (PgTokenBucket)
+ *   - Distributed circuit breaker via PostgreSQL (PgCircuitBreaker)
+ *   - Lightweight budget statistics for dashboard/monitoring (getBudgetStats)
  */
 export class BatchRateQueue<T> extends EventEmitter {
   readonly name: string;
@@ -65,11 +56,14 @@ export class BatchRateQueue<T> extends EventEmitter {
   private readonly throttler: Throttler;
   private readonly keyedThrottler: KeyedThrottler | null;
   private readonly scheduler: FairScheduler<T> | null;
+  private readonly pgTokenBucket: PgTokenBucket | null;
+  private readonly circuitBreaker: PgCircuitBreaker | null;
   private readonly buffer: WriteBuffer;
   private readonly isAdaptive: boolean;
   private readonly isCostBased: boolean;
   private readonly isKeyed: boolean;
   private readonly isFairShare: boolean;
+  private readonly isDistributed: boolean;
 
   private pendingItems: T[] = [];
   private processedCount = 0;
@@ -78,6 +72,12 @@ export class BatchRateQueue<T> extends EventEmitter {
   private paused = false;
   private draining = false;
   private shutdownCleanup: (() => void) | null = null;
+  private lastBreakerState: {
+    state: CircuitState;
+    failureCount: number;
+    lastFailure: Date | null;
+    openedAt: Date | null;
+  } | null = null;
 
   constructor(options: BatchRateQueueOptions<T>) {
     super();
@@ -97,8 +97,38 @@ export class BatchRateQueue<T> extends EventEmitter {
     this.isAdaptive = !!this.options.adaptiveThrottle?.enabled;
     this.isKeyed = !!this.options.rateLimitKey;
     this.isFairShare = !!this.options.fairShare && this.isKeyed;
+    this.isDistributed = !!this.options.distributed;
 
-    // Initialize rate limiter (adaptive or standard)
+    // Initialize distributed rate limiter if configured
+    if (this.isDistributed && this.options.distributed) {
+      this.pgTokenBucket = new PgTokenBucket({
+        pool: this.options.distributed.pool,
+        bucketKey: this.options.distributed.bucketKey ?? this.name,
+        rateLimit: this.options.rateLimit,
+        tableName: this.options.distributed.tableName,
+        autoCreateSchema: this.options.distributed.autoCreateSchema,
+        retryIntervalMs: this.options.distributed.retryIntervalMs,
+        acquireTimeoutMs: this.options.distributed.acquireTimeoutMs,
+      });
+    } else {
+      this.pgTokenBucket = null;
+    }
+
+    // Initialize distributed circuit breaker if configured
+    if (this.options.circuitBreaker && this.options.circuitBreaker.enabled !== false) {
+      this.circuitBreaker = new PgCircuitBreaker({
+        pool: this.options.circuitBreaker.pool,
+        breakerKey: this.options.circuitBreaker.breakerKey ?? `${this.name}:breaker`,
+        failureThreshold: this.options.circuitBreaker.failureThreshold,
+        cooldownMs: this.options.circuitBreaker.cooldownMs,
+        tableName: this.options.circuitBreaker.tableName,
+        autoCreateSchema: this.options.circuitBreaker.autoCreateSchema,
+      });
+    } else {
+      this.circuitBreaker = null;
+    }
+
+    // Initialize local rate limiter (adaptive or standard)
     if (this.isAdaptive && this.options.adaptiveThrottle) {
       const adaptiveConfig = {
         ...this.options.adaptiveThrottle,
@@ -245,6 +275,76 @@ export class BatchRateQueue<T> extends EventEmitter {
   }
 
   /**
+   * Get comprehensive budget and throughput statistics.
+   * Designed for dashboard endpoints, Prometheus metrics, or health checks.
+   */
+  getBudgetStats(): BudgetStats {
+    const effectiveRate = this.throttler.getEffectiveRate();
+    const availableTokens = this.throttler.getAvailableTokens();
+    const maxTokens = this.options.rateLimit.requests;
+    const utilizationPct = Math.max(
+      0,
+      Math.min(100, Math.round(((maxTokens - availableTokens) / maxTokens) * 100))
+    );
+
+    const requestsPerSec = effectiveRate.requests / (effectiveRate.perMs / 1000);
+    const pending = this.getPendingCount();
+    const estimatedSecondsRemaining = requestsPerSec > 0 && pending > 0
+      ? Math.ceil(pending / requestsPerSec)
+      : 0;
+
+    const estimatedCompletionTime = pending > 0 && estimatedSecondsRemaining > 0
+      ? new Date(Date.now() + estimatedSecondsRemaining * 1000).toISOString()
+      : null;
+
+    let keysStats: Record<string, any> | null = null;
+    if (this.keyedThrottler) {
+      const statsMap = this.keyedThrottler.getAllKeyStats();
+      const schedulerMap = this.scheduler?.getKeyStats();
+      const obj: Record<string, any> = {};
+
+      for (const [k, v] of statsMap.entries()) {
+        obj[k] = {
+          availableTokens: v.availableTokens,
+          waitingCount: v.waitingCount,
+          pending: schedulerMap?.get(k)?.pending ?? 0,
+          deficit: schedulerMap?.get(k)?.deficit ?? 0,
+        };
+      }
+      keysStats = obj;
+    }
+
+    return {
+      queue: {
+        name: this.name,
+        state: this.paused ? 'paused' : (this.running ? 'running' : 'idle'),
+        pending,
+        processed: this.processedCount,
+        failed: this.failedCount,
+      },
+      rateLimit: {
+        configured: { ...this.options.rateLimit },
+        effective: effectiveRate,
+        availableTokens,
+        waitingCount: this.throttler.getWaitingCount(),
+        utilizationPct,
+      },
+      buffer: {
+        currentSize: this.buffer.length,
+        flushThreshold: this.options.batchFlush.size,
+        totalFlushed: this.buffer.totalFlushed,
+        failedFlushes: this.buffer.failedFlushes,
+      },
+      backlogEta: {
+        estimatedSecondsRemaining,
+        estimatedCompletionTime,
+      },
+      keys: keysStats,
+      circuitBreaker: this.lastBreakerState,
+    };
+  }
+
+  /**
    * Update the rate limit configuration at runtime.
    * Takes effect immediately on the next token refill cycle.
    * Does NOT require restarting the queue.
@@ -254,6 +354,9 @@ export class BatchRateQueue<T> extends EventEmitter {
     const newPerMs = config.perMs ?? this.options.rateLimit.perMs;
 
     this.throttler.setRate(newRequests, newPerMs);
+    if (this.pgTokenBucket) {
+      this.pgTokenBucket.setRate({ requests: newRequests, perMs: newPerMs }).catch(() => {});
+    }
 
     // Update stored config
     this.options.rateLimit.requests = newRequests;
@@ -273,9 +376,6 @@ export class BatchRateQueue<T> extends EventEmitter {
   /**
    * Set a custom rate limit for a specific key (tenant/API key/destination).
    * Only works when `rateLimitKey` is configured.
-   *
-   * @param key The rate-limit key
-   * @param config The rate limit for this specific key
    */
   setKeyRateLimit(key: string, config: RateLimitConfig): void {
     if (!this.keyedThrottler) {
@@ -305,7 +405,7 @@ export class BatchRateQueue<T> extends EventEmitter {
   }
 
   /**
-   * Destroy the queue, cleaning up all timers and handlers.
+   * Destroy the queue, cleaning up all timers, handles, and connections.
    */
   destroy(): void {
     this.running = false;
@@ -313,6 +413,8 @@ export class BatchRateQueue<T> extends EventEmitter {
     this.throttler.destroy();
     this.keyedThrottler?.destroy();
     this.scheduler?.clear();
+    this.pgTokenBucket?.destroy().catch(() => {});
+    this.circuitBreaker?.destroy().catch(() => {});
     this.buffer.destroy();
 
     if (this.shutdownCleanup) {
@@ -354,9 +456,6 @@ export class BatchRateQueue<T> extends EventEmitter {
   /**
    * Dequeue the next batch of items for processing.
    * Uses the fair scheduler if enabled, otherwise splices from the FIFO array.
-   *
-   * Returns an array of { key, item } where key is the rate-limit key
-   * (or '__default__' if keyed throttling is not enabled).
    */
   private dequeueItems(count: number): Array<{ key: string; item: T }> {
     if (this.scheduler) {
@@ -367,7 +466,7 @@ export class BatchRateQueue<T> extends EventEmitter {
     const items = this.pendingItems.splice(0, count);
     const keyExtractor = this.options.rateLimitKey;
 
-    return items.map(item => ({
+    return items.map((item) => ({
       key: keyExtractor ? keyExtractor(item) : '__default__',
       item,
     }));
@@ -375,10 +474,13 @@ export class BatchRateQueue<T> extends EventEmitter {
 
   /**
    * Acquire a rate-limit token for the given key and cost.
-   * Routes to keyed throttler if per-key rate limiting is enabled,
-   * otherwise uses the single shared throttler.
+   * Routes to PgTokenBucket (if distributed), KeyedThrottler (if keyed),
+   * or standard in-memory Throttler.
    */
   private async acquireToken(key: string, cost: number): Promise<void> {
+    if (this.pgTokenBucket) {
+      return this.pgTokenBucket.acquire(cost);
+    }
     if (this.keyedThrottler && key !== '__default__') {
       return this.keyedThrottler.acquire(key, cost);
     }
@@ -407,10 +509,40 @@ export class BatchRateQueue<T> extends EventEmitter {
 
         const promises = batch.map(async ({ key, item }) => {
           try {
+            // Check circuit breaker if configured
+            if (this.circuitBreaker) {
+              const allowed = await this.circuitBreaker.allowRequest();
+              if (!allowed) {
+                // Circuit is OPEN — re-enqueue item and wait briefly
+                if (this.scheduler) {
+                  this.scheduler.add(item);
+                } else {
+                  this.pendingItems.unshift(item);
+                }
+                const cbState = await this.circuitBreaker.getState();
+                this.lastBreakerState = {
+                  state: cbState.state,
+                  failureCount: cbState.failureCount,
+                  lastFailure: cbState.lastFailure,
+                  openedAt: cbState.openedAt,
+                };
+                this.emit('circuitBreakerTripped', {
+                  breakerKey: cbState.breakerKey,
+                  failureCount: cbState.failureCount,
+                  openedAt: cbState.openedAt ?? new Date(),
+                });
+                await new Promise((resolve) =>
+                  setTimeout(resolve, Math.min(1000, cbState.cooldownMs))
+                );
+                return;
+              }
+            }
+
             // Determine cost for this item
-            const cost = this.isCostBased && this.options.costExtractor
-              ? this.options.costExtractor(item)
-              : 1;
+            const cost =
+              this.isCostBased && this.options.costExtractor
+                ? this.options.costExtractor(item)
+                : 1;
 
             // Acquire rate-limit tokens (may block)
             await this.acquireToken(key, cost);
@@ -427,6 +559,26 @@ export class BatchRateQueue<T> extends EventEmitter {
 
             // Call the user's worker function
             const result = await this.options.worker(item);
+
+            // Record success for circuit breaker
+            if (this.circuitBreaker) {
+              const hadTripped =
+                this.lastBreakerState?.state === 'open' ||
+                this.lastBreakerState?.state === 'half-open';
+              await this.circuitBreaker.recordSuccess();
+              const cbState = await this.circuitBreaker.getState();
+              this.lastBreakerState = {
+                state: cbState.state,
+                failureCount: cbState.failureCount,
+                lastFailure: cbState.lastFailure,
+                openedAt: cbState.openedAt,
+              };
+              if (hadTripped) {
+                this.emit('circuitBreakerReset', {
+                  breakerKey: cbState.breakerKey,
+                });
+              }
+            }
 
             // Record success for adaptive throttling
             if (this.isAdaptive) {
@@ -455,6 +607,25 @@ export class BatchRateQueue<T> extends EventEmitter {
           } catch (error: any) {
             this.failedCount++;
             const err = error instanceof Error ? error : new Error(String(error));
+
+            // Record failure for circuit breaker
+            if (this.circuitBreaker) {
+              const tripped = await this.circuitBreaker.recordFailure();
+              const cbState = await this.circuitBreaker.getState();
+              this.lastBreakerState = {
+                state: cbState.state,
+                failureCount: cbState.failureCount,
+                lastFailure: cbState.lastFailure,
+                openedAt: cbState.openedAt,
+              };
+              if (tripped) {
+                this.emit('circuitBreakerTripped', {
+                  breakerKey: cbState.breakerKey,
+                  failureCount: cbState.failureCount,
+                  openedAt: cbState.openedAt ?? new Date(),
+                });
+              }
+            }
 
             // Record failure for adaptive throttling
             if (this.isAdaptive) {

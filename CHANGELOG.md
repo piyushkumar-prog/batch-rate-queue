@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-09-27
+
+### Added
+
+- **Postgres-Backed Distributed Token Bucket** (`PgTokenBucket`):
+  - Shared atomic rate limiting across N Node.js replicas or Kubernetes pods without Redis
+  - Coordinates global API rate limits (e.g. 10 req/sec) using PostgreSQL row-level locks and time-delta refills
+  - Auto-creates schema `_brq_rate_buckets`
+  - Cost-weighted acquire support: `bucket.acquire(tokenCount)`
+  - Live runtime reconfiguration: `bucket.setRate(config)`
+  - Seamless queue integration via `distributed: { pool, bucketKey, tableName }`
+- **Postgres-Backed Distributed Circuit Breaker** (`PgCircuitBreaker`):
+  - Cross-process failure coordination across all pods when a downstream API fails
+  - State machine: `CLOSED` -> `OPEN` -> `HALF-OPEN` -> `CLOSED`
+  - Auto-creates schema `_brq_circuit_breakers`
+  - Prevents cascading thundering-herd outages across all application replicas
+  - Emits `circuitBreakerTripped` and `circuitBreakerReset` events
+- **Lightweight Budget Dashboard Data & Stats** (`queue.getBudgetStats()`):
+  - Structured stats export for monitoring, health checks, or Prometheus metrics
+  - Exposes queue status, token utilization %, buffer metrics, and backlog ETA (seconds remaining & completion timestamp)
+  - Seamlessly surfaces per-key tenant statistics and circuit breaker state
+- 27 new tests (141 total, 100% passing across 12 test suites)
+
 ## [1.2.0] - 2026-09-27
 
 ### Added

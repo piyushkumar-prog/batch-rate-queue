@@ -132,11 +132,13 @@ export class KeyedThrottler {
   }
 
   /**
-   * Get stats for all active keys.
+   * Get stats for all active and configured keys.
    */
   getAllKeyStats(): Map<string, KeyBucketStats> {
     const stats = new Map<string, KeyBucketStats>();
-    for (const [key, bucket] of this.buckets) {
+    const allKeys = new Set([...this.buckets.keys(), ...this.perKeyConfigs.keys()]);
+    for (const key of allKeys) {
+      const bucket = this.getOrCreateBucket(key);
       stats.set(key, {
         availableTokens: bucket.getAvailableTokens(),
         waitingCount: bucket.getWaitingCount(),

@@ -9,6 +9,12 @@ export { FairScheduler } from './core/fair-scheduler';
 export { WriteBuffer, isDbConnectionError } from './core/buffer';
 export { setupGracefulShutdown, removeShutdownHandlers } from './core/shutdown';
 
+// Distributed
+export { PgTokenBucket } from './distributed/pg-token-bucket';
+export type { PgTokenBucketOptions, PgTokenBucketState } from './distributed/pg-token-bucket';
+export { PgCircuitBreaker } from './distributed/pg-circuit-breaker';
+export type { PgCircuitBreakerOptions, PgCircuitBreakerState, CircuitState } from './distributed/pg-circuit-breaker';
+
 // Error Classifiers
 export {
   httpRateLimitClassifier,
@@ -30,6 +36,9 @@ export type {
   BatchFlushConfig,
   BufferItem,
   QueueStats,
+  BudgetStats,
+  DistributedConfig,
+  CircuitBreakerConfig,
   WorkerResult,
   WorkerResultMeta,
   QueueEvents,

@@ -340,6 +340,94 @@ export interface BatchRateQueueOptions<T> {
    * @default false
    */
   fairShare?: boolean;
+
+  /**
+   * PostgreSQL-backed distributed token bucket configuration.
+   * When provided, multiple server processes share a single rate-limit bucket
+   * stored in Postgres without requiring Redis.
+   */
+  distributed?: DistributedConfig;
+
+  /**
+   * Distributed circuit breaker configuration.
+   * When enabled, circuit breaker state is coordinated via Postgres across all replicas.
+   */
+  circuitBreaker?: CircuitBreakerConfig;
+}
+
+/**
+ * Configuration for PostgreSQL-backed distributed token bucket.
+ */
+export interface DistributedConfig {
+  /** PostgreSQL Pool or Client instance (e.g. from 'pg') */
+  pool: any;
+  /** Unique key for this bucket in the database. @default queue.name */
+  bucketKey?: string;
+  /** Table name for the shared token bucket. @default '_brq_rate_buckets' */
+  tableName?: string;
+  /** Auto-create table schema if it does not exist. @default true */
+  autoCreateSchema?: boolean;
+  /** Retry interval in ms when token bucket is empty. @default 50 */
+  retryIntervalMs?: number;
+  /** Max wait time in ms before throwing timeout error on acquire. @default 30000 */
+  acquireTimeoutMs?: number;
+}
+
+/**
+ * Configuration for PostgreSQL-backed distributed circuit breaker.
+ */
+export interface CircuitBreakerConfig {
+  /** Enable distributed circuit breaker. @default true */
+  enabled?: boolean;
+  /** PostgreSQL Pool or Client instance (e.g. from 'pg') */
+  pool: any;
+  /** Unique key for this circuit breaker. @default queue.name + ':breaker' */
+  breakerKey?: string;
+  /** Consecutive failures before tripping the breaker. @default 5 */
+  failureThreshold?: number;
+  /** Cooldown time in milliseconds before transitioning from OPEN to HALF-OPEN. @default 30000 */
+  cooldownMs?: number;
+  /** Table name for circuit breaker state. @default '_brq_circuit_breakers' */
+  tableName?: string;
+  /** Auto-create table schema if it does not exist. @default true */
+  autoCreateSchema?: boolean;
+}
+
+/**
+ * Comprehensive budget and throughput statistics for dashboard / monitoring endpoints.
+ */
+export interface BudgetStats {
+  queue: {
+    name: string;
+    state: 'idle' | 'running' | 'paused';
+    pending: number;
+    processed: number;
+    failed: number;
+  };
+  rateLimit: {
+    configured: RateLimitConfig;
+    effective: { requests: number; perMs: number };
+    availableTokens: number;
+    waitingCount: number;
+    utilizationPct: number;
+  };
+  buffer: {
+    currentSize: number;
+    flushThreshold: number;
+    totalFlushed: number;
+    failedFlushes: number;
+  };
+  backlogEta: {
+    estimatedSecondsRemaining: number;
+    estimatedCompletionTime: string | null;
+  };
+  keys?: Record<string, { availableTokens?: number; waitingCount?: number; pending?: number; deficit?: number }> | null;
+  circuitBreaker?: {
+    state: 'closed' | 'open' | 'half-open';
+    failureCount: number;
+    lastFailure: Date | null;
+    openedAt: Date | null;
+  } | null;
 }
 
 /**
@@ -358,4 +446,8 @@ export interface QueueEvents {
   error: (error: Error, context: string) => void;
   /** Emitted when the adaptive throttler adjusts the rate */
   rateLimitChanged: (event: RateChangeEvent) => void;
+  /** Emitted when the circuit breaker trips from closed to open */
+  circuitBreakerTripped: (event: { breakerKey: string; failureCount: number; openedAt: Date }) => void;
+  /** Emitted when the circuit breaker recovers from open/half-open to closed */
+  circuitBreakerReset: (event: { breakerKey: string }) => void;
 }

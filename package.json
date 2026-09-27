@@ -1,6 +1,6 @@
 {
   "name": "batch-rate-queue",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Zero-Redis resilient background worker with batch SQL write-buffering and token-bucket rate limiting",
   "author": "Piyush Kumar",
   "license": "MIT",
@@ -22,6 +22,22 @@
     "./adapters/sqlite": {
       "types": "./dist/adapters/sqlite.d.ts",
       "default": "./dist/adapters/sqlite.js"
+    },
+    "./distributed/pg-token-bucket": {
+      "types": "./dist/distributed/pg-token-bucket.d.ts",
+      "default": "./dist/distributed/pg-token-bucket.js"
+    },
+    "./distributed/pg-circuit-breaker": {
+      "types": "./dist/distributed/pg-circuit-breaker.d.ts",
+      "default": "./dist/distributed/pg-circuit-breaker.js"
+    }
+  },
+  "peerDependencies": {
+    "pg": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "pg": {
+      "optional": true
     }
   },
   "files": [
