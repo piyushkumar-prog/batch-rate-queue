@@ -1,0 +1,75 @@
+{
+  "name": "batch-rate-queue",
+  "version": "1.0.0",
+  "description": "Zero-Redis resilient background worker with batch SQL write-buffering and token-bucket rate limiting",
+  "author": "Piyush Kumar",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./adapters/prisma": {
+      "types": "./dist/adapters/prisma.d.ts",
+      "default": "./dist/adapters/prisma.js"
+    },
+    "./adapters/pg": {
+      "types": "./dist/adapters/pg.d.ts",
+      "default": "./dist/adapters/pg.js"
+    },
+    "./adapters/sqlite": {
+      "types": "./dist/adapters/sqlite.d.ts",
+      "default": "./dist/adapters/sqlite.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true})\"",
+    "prebuild": "npm run clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run lint && npm run test && npm run build"
+  },
+  "keywords": [
+    "queue",
+    "rate-limit",
+    "batch",
+    "worker",
+    "throttle",
+    "background-job",
+    "write-buffer",
+    "token-bucket",
+    "batch-update",
+    "rate-limiter",
+    "job-queue",
+    "no-redis",
+    "prisma",
+    "postgresql",
+    "sqlite"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/batch-rate-queue.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YOUR_USERNAME/batch-rate-queue/issues"
+  },
+  "homepage": "https://github.com/YOUR_USERNAME/batch-rate-queue#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  }
+}
